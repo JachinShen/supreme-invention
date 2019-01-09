@@ -22,7 +22,7 @@ VIDEO_H = 400
 WINDOW_W = 1200
 WINDOW_H = 1000
 
-SCALE       = 4.0        # Track scale
+SCALE       = 25.0        # Track scale
 TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD   = 2000/SCALE # Game over boundary
 FPS         = 50
@@ -71,7 +71,7 @@ class CarRacing(gym.Env, EzPickle):
         self.t = 0.0
         self.human_render = False
 
-        self.car = Car(self.world, 0.0, 0.0, 5.0)
+        self.car = Car(self.world, -np.pi/2, 0.5, 4.5)
         self.map = ICRAMap(self.world)
 
         return self.step(None)[0]
