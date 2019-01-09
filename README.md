@@ -20,6 +20,8 @@ pip3 install gym box2d box2d-kengz
 python3 main.py
 ```
 
+![](./screenshot.png)
+
 ## TODO
 
 1. ICRA Map Construction
