@@ -22,9 +22,9 @@ VIDEO_H = 400
 WINDOW_W = 1200
 WINDOW_H = 1000
 
-SCALE       = 4.0        # Track scale
-TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD   = 2000/SCALE # Game over boundary
+SCALE       = 8.0        # Track scale
+#TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
+PLAYFIELD   = 300/SCALE # Game over boundary
 FPS         = 50
 ZOOM        = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
@@ -130,7 +130,7 @@ class CarRacing(gym.Env, EzPickle):
         self.transform.set_scale(zoom, zoom)
         self.transform.set_translation(
             WINDOW_W/2 - (scroll_x*zoom*math.cos(angle) - scroll_y*zoom*math.sin(angle)),
-            WINDOW_H/2 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)) )
+            WINDOW_H/4 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)) )
         #self.transform.set_rotation(angle)
 
         self.car.draw(self.viewer, mode!="state_pixels")
@@ -170,6 +170,7 @@ class CarRacing(gym.Env, EzPickle):
             t = self.transform
             gl.glViewport(0, 0, WINDOW_W, WINDOW_H)
             t.enable()
+            self.render_background()
             for geom in self.viewer.onetime_geoms:
                 geom.render()
             t.disable()
@@ -183,6 +184,24 @@ class CarRacing(gym.Env, EzPickle):
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
+
+    def render_background(self):
+        gl.glBegin(gl.GL_QUADS)
+        gl.glColor4f(0.4, 0.8, 0.4, 1.0)
+        gl.glVertex3f(-PLAYFIELD, +PLAYFIELD, 0)
+        gl.glVertex3f(+PLAYFIELD, +PLAYFIELD, 0)
+        gl.glVertex3f(+PLAYFIELD, -PLAYFIELD, 0)
+        gl.glVertex3f(-PLAYFIELD, -PLAYFIELD, 0)
+        gl.glColor4f(0.4, 0.9, 0.4, 1.0)
+        k = PLAYFIELD/20.0
+        for x in range(-20, 20, 2):
+            for y in range(-20, 20, 2):
+                gl.glVertex3f(k*x + k, k*y + 0, 0)
+                gl.glVertex3f(k*x + 0, k*y + 0, 0)
+                gl.glVertex3f(k*x + 0, k*y + k, 0)
+                gl.glVertex3f(k*x + k, k*y + k, 0)
+        gl.glEnd()
+
 
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward

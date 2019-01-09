@@ -70,8 +70,8 @@ class ICRAMap:
             for f in obj.fixtures:
                 trans = f.body.transform
                 path = [trans*v for v in f.shape.vertices]
-                print("ICRA Map")
-                print(path)
+                #print("ICRA Map")
+                #print(path)
                 viewer.draw_polygon(path, color=obj.color)
 
     def destroy(self):
