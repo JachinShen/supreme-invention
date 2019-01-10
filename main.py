@@ -22,9 +22,9 @@ VIDEO_H = 400
 WINDOW_W = 1200
 WINDOW_H = 1000
 
-SCALE       = 25.0        # Track scale
+SCALE       = 40.0        # Track scale
 TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD   = 2000/SCALE # Game over boundary
+PLAYFIELD   = 400/SCALE # Game over boundary
 FPS         = 50
 ZOOM        = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
@@ -121,7 +121,7 @@ class CarRacing(gym.Env, EzPickle):
         #scroll_x = self.car.hull.position[0]
         #scroll_y = self.car.hull.position[1]
         #angle = -self.car.hull.angle
-        scroll_x = 0.0
+        scroll_x = 4.0
         scroll_y = 0.0
         angle = 0
         #vel = self.car.hull.linearVelocity
