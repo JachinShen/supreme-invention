@@ -55,10 +55,14 @@ class Car:
             position = (init_x, init_y),
             angle = init_angle,
             fixtures = [
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY1 ]), density=1.0),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY2 ]), density=1.0),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY3 ]), density=1.0),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY4 ]), density=1.0)
+                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY1 ]),
+                    density=10.0, restitution=1),
+                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY2 ]),
+                    density=10.0, restitution=1),
+                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY3 ]),
+                    density=10.0, restitution=1),
+                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY4 ]),
+                    density=10.0, restitution=1),
                 ]
             )
         self.hull.color = (0.8,0.0,0.0)
@@ -155,7 +159,7 @@ class Car:
             # WHEEL_MOMENT_OF_INERTIA*w.omega * domega/dt = dE/dt = W -- power
             # domega = dt*W/WHEEL_MOMENT_OF_INERTIA/w.omega
             w.omega += dt*ENGINE_POWER*w.gas/WHEEL_MOMENT_OF_INERTIA/(abs(w.omega)+5.0)  # small coef not to divide by zero
-            self.fuel_spent += dt*ENGINE_POWER*w.gas
+            # self.fuel_spent += dt*ENGINE_POWER*w.gas
 
             if w.brake >= 0.9:
                 w.omega = 0

@@ -42,10 +42,13 @@ class ICRAContactListener(contactListener):
     def PreSolve(self, contact, oldManifold):
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
-        if u1[:6] == "bullet":
-            self.nuke.append(contact.fixtureA.body)
-        if u2[:6] == "bullet":
-            self.nuke.append(contact.fixtureB.body)
+        if type(u1) != str or type(u2) != str:
+            return
+        #print(u1, u2)
+        if u1.split("_")[0] == "bullet":
+            self.nuke.append(u1)
+        if u2.split("_")[0] == "bullet":
+            self.nuke.append(u2)
         
     def PostSolve(self, contact, impulse):
         pass
@@ -249,7 +252,7 @@ if __name__=="__main__":
         if k==0xff0d: restart = True
         if k==key.LEFT:  a[0] = -1.0
         if k==key.RIGHT: a[0] = +1.0
-        if k==key.UP:    a[1] = +1.0
+        if k==key.UP:    a[1] = +0.2
         if k==key.DOWN:  a[2] = +0.8   # set 1.0 for wheels to block to zero rotation
         if k==key.SPACE: a[3] = +1.0
     def key_release(k, mod):
