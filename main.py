@@ -14,6 +14,7 @@ from pyglet import gl
 
 from Robot import Car
 from ICRAMap import ICRAMap
+from Bullet import Bullet
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -25,9 +26,29 @@ WINDOW_H = 1000
 SCALE       = 40.0        # Track scale
 TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD   = 400/SCALE # Game over boundary
-FPS         = 50
+FPS         = 30
 ZOOM        = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
+
+class ICRAContactListener(contactListener):
+    def __init__(self, env):
+        contactListener.__init__(self)
+        self.env = env
+        self.nuke = []
+    def BeginContact(self, contact):
+        pass
+    def EndContact(self, contact):
+        pass
+    def PreSolve(self, contact, oldManifold):
+        u1 = contact.fixtureA.body.userData
+        u2 = contact.fixtureB.body.userData
+        if u1[:6] == "bullet":
+            self.nuke.append(contact.fixtureA.body)
+        if u2[:6] == "bullet":
+            self.nuke.append(contact.fixtureB.body)
+        
+    def PostSolve(self, contact, impulse):
+        pass
 
 class CarRacing(gym.Env, EzPickle):
     metadata = {
@@ -38,15 +59,16 @@ class CarRacing(gym.Env, EzPickle):
     def __init__(self):
         EzPickle.__init__(self)
         self.seed()
-        #self.contactListener_keepref = FrictionDetector(self)
-        #self.world = Box2D.b2World((0,0), contactListener=self.contactListener_keepref)
-        self.world = Box2D.b2World((0,0))
+        self.contactListener_keepref = ICRAContactListener(self)
+        self.world = Box2D.b2World((0,0), contactListener=self.contactListener_keepref)
+        #self.world = Box2D.b2World((0,0), )
         self.viewer = None
         self.invisible_state_window = None
         self.invisible_video_window = None
         self.road = None
         self.car = None
         self.map = None
+        self.bullets = None
         self.reward = 0.0
         self.prev_reward = 0.0
 
@@ -63,6 +85,8 @@ class CarRacing(gym.Env, EzPickle):
             self.car.destroy()
         if self.map:
             self.map.destroy()
+        if self.bullets:
+            self.bullets.destroy()
 
     def reset(self):
         self._destroy()
@@ -73,16 +97,22 @@ class CarRacing(gym.Env, EzPickle):
 
         self.car = Car(self.world, -np.pi/2, 0.5, 4.5)
         self.map = ICRAMap(self.world)
+        self.bullets = Bullet(self.world)
 
         return self.step(None)[0]
 
     def step(self, action):
+        nuke = self.contactListener_keepref.nuke
+        if len(nuke) > 0:
+            self.bullets.destroyContacted(nuke)
+            self.contactListener_keepref.nuke = []
         if action is not None:
             self.car.steer(-action[0])
             self.car.gas(action[1])
             self.car.brake(action[2])
             if action[3] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-                self.car.shoot()
+                init_angle, init_pos = self.car.getAnglePos()
+                self.bullets.shoot(init_angle, init_pos)
 
         self.car.step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
@@ -135,8 +165,9 @@ class CarRacing(gym.Env, EzPickle):
             WINDOW_H/4 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)) )
         #self.transform.set_rotation(angle)
 
-        self.car.draw(self.viewer, mode!="state_pixels")
         self.map.draw(self.viewer)
+        self.car.draw(self.viewer, mode!="state_pixels")
+        self.bullets.draw(self.viewer)
 
         arr = None
         win = self.viewer.window

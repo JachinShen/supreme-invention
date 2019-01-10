@@ -61,6 +61,7 @@ class ICRAMap:
             ) for p, b in zip(BORDER_POS, BORDER_BOX)]
         for i in range(len(self.borders)):
             self.borders[i].color = COLOR_WHITE
+            self.borders[i].userData = "wall"
         self.drawlist = self.borders
 
     def step(self, dt):
