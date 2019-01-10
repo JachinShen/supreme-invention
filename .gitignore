@@ -3,3 +3,4 @@ venv
 gym-ICRA
 resources
 __pycache__
+.idea
