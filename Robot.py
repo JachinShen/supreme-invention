@@ -46,6 +46,8 @@ WHEEL_COLOR = (0.0,0.0,0.0)
 WHEEL_WHITE = (0.3,0.3,0.3)
 MUD_COLOR   = (0.4,0.4,0.0)
 
+BULLET_BOX = (40*SIZE, 10*SIZE)
+
 class Car:
     def __init__(self, world, init_angle, init_x, init_y):
         self.world = world
@@ -105,6 +107,25 @@ class Car:
             self.wheels.append(w)
         self.drawlist =  self.wheels + [self.hull]
         self.particles = []
+        self.bullets = []
+
+    def shoot(self):
+            x, y = self.hull.position
+            angle = self.hull.angle + math.pi/2
+            x += math.cos(angle) * 0.2
+            y += math.sin(angle) * 0.2
+            bullet = self.world.CreateDynamicBody(
+                position = (x, y),
+                angle = angle,
+                fixtures = [
+                    fixtureDef(
+                        shape = polygonShape(box=BULLET_BOX), 
+                        density=1.0)
+                ]
+            )
+            bullet.color = (0.0, 0.0, 0.0)
+            bullet.linearVelocity = (math.cos(angle), math.sin(angle))
+            self.bullets.append(bullet)
 
     def gas(self, gas):
         'control: rear wheel drive'
@@ -201,7 +222,7 @@ class Car:
         #if draw_particles:
             #for p in self.particles:
                 #viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
-        for obj in self.drawlist:
+        for obj in self.drawlist+self.bullets:
             for f in obj.fixtures:
                 trans = f.body.transform
                 path = [trans*v for v in f.shape.vertices]
@@ -242,4 +263,7 @@ class Car:
         for w in self.wheels:
             self.world.DestroyBody(w)
         self.wheels = []
+        if self.bullet:
+            self.world.DestroyBody(self.bullet)
+            self.bullet = None
 

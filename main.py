@@ -50,7 +50,7 @@ class CarRacing(gym.Env, EzPickle):
         self.reward = 0.0
         self.prev_reward = 0.0
 
-        self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]), dtype=np.float32)  # steer, gas, brake
+        self.action_space = spaces.Box( np.array([-1,0,0,0]), np.array([+1,+1,+1,+1]), dtype=np.float32)  # steer, gas, brake, shoot
         self.observation_space = spaces.Box(low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
 
 
@@ -81,6 +81,8 @@ class CarRacing(gym.Env, EzPickle):
             self.car.steer(-action[0])
             self.car.gas(action[1])
             self.car.brake(action[2])
+            if action[3] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+                self.car.shoot()
 
         self.car.step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
@@ -210,7 +212,7 @@ class CarRacing(gym.Env, EzPickle):
 
 if __name__=="__main__":
     from pyglet.window import key
-    a = np.array( [0.0, 0.0, 0.0] )
+    a = np.array( [0.0, 0.0, 0.0, 0.0] )
     def key_press(k, mod):
         global restart
         if k==0xff0d: restart = True
@@ -218,11 +220,13 @@ if __name__=="__main__":
         if k==key.RIGHT: a[0] = +1.0
         if k==key.UP:    a[1] = +1.0
         if k==key.DOWN:  a[2] = +0.8   # set 1.0 for wheels to block to zero rotation
+        if k==key.SPACE: a[3] = +1.0
     def key_release(k, mod):
         if k==key.LEFT  and a[0]==-1.0: a[0] = 0
         if k==key.RIGHT and a[0]==+1.0: a[0] = 0
         if k==key.UP:    a[1] = 0
         if k==key.DOWN:  a[2] = 0
+        if k==key.SPACE: a[3] = 0
     env = CarRacing()
     env.render()
     record_video = False
