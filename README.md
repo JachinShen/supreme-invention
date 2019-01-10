@@ -22,6 +22,10 @@ python3 main.py
 
 ![](./screenshot.png)
 
+Modify the map and set the unit to meter
+
+![](./Field.png)
+
 ## TODO
 
 1. ICRA Map Construction

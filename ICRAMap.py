@@ -48,8 +48,9 @@ MUD_COLOR   = (0.4,0.4,0.0)
 
 COLOR_WHITE = (1.0, 1.0, 1.0)
 
-BORDER_POS = [(0,0), (-20,15), (0,30), (20,15)]
-BORDER_BOX = [(20,1), (1,15), (20,1), (1, 15)]
+BORDER_POS = [(-0.1, 2.5),(4,-0.1), (4, 5.1), (8.1,2.5),(1.525,1.9),(3.375,0.5),(6.475,3.1),(4.625,4.5),(1.7,3.875),(4,2.5),(6.3, 1.125)]
+BORDER_BOX = [(0.1, 2.5), (4,0.1), (4,0.1), (0.1, 2.5), (0.125, 0.5),(0.125, 0.5),(0.125, 0.5),(0.125, 0.5),
+              (0.5,0.125), (0.5, 0.125),(0.5, 0.125)]  # Half of the weight and height
 
 class ICRAMap:
     def __init__(self, world):
@@ -58,7 +59,7 @@ class ICRAMap:
             position=p,
             shapes=polygonShape(box=b),
             ) for p, b in zip(BORDER_POS, BORDER_BOX)]
-        for i in range(4):
+        for i in range(len(self.borders)):
             self.borders[i].color = COLOR_WHITE
         self.drawlist = self.borders
 
