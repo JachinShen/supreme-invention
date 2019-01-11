@@ -271,7 +271,7 @@ class CarRacing(gym.Env, EzPickle):
 
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward
-        self.health_label.text = "hetlth left Car0 : {} Car1: {} ".format(self.car0._health(),self.car1._health())
+        self.health_label.text = "health left Car0 : {} Car1: {} ".format(self.car0._health(),self.car1._health())
         self.score_label.draw()
         self.health_label.draw()
 
