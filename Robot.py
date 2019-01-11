@@ -49,7 +49,7 @@ MUD_COLOR   = (0.4,0.4,0.0)
 BULLET_BOX = (40*SIZE, 10*SIZE)
 
 class Car:
-    def __init__(self, world, init_angle, init_x, init_y):
+    def __init__(self, world, init_angle, init_x, init_y,userData):
         self.world = world
         self.hull = self.world.CreateDynamicBody(
             position = (init_x, init_y),
@@ -66,7 +66,7 @@ class Car:
                 ]
             )
         self.hull.color = (0.8,0.0,0.0)
-        self.hull.userData = "robot"
+        self.hull.userData = userData
         self.wheels = []
         self.fuel_spent = 0.0
         WHEEL_POLY = [
@@ -87,6 +87,7 @@ class Car:
                     )
             w.wheel_rad = front_k*WHEEL_R*SIZE
             w.color = WHEEL_COLOR
+            w.health = 100.0
             w.gas   = 0.0
             w.brake = 0.0
             w.steer = 0.0
@@ -123,6 +124,13 @@ class Car:
             diff = gas - w.gas
             if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
             w.gas += diff
+    def health(self, health):
+        for w in self.wheels[2:4]:
+            w.health -= health
+    def _health(self):
+        for w in self.wheels[2:4]:
+            return w.health
+
 
     def brake(self, b):
         'control: brake b=0..1, more than 0.9 blocks wheels to zero rotation'

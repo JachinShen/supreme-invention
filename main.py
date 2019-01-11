@@ -35,6 +35,8 @@ class ICRAContactListener(contactListener):
         contactListener.__init__(self)
         self.env = env
         self.nuke = []
+        self.collision_robot0_wall = []
+        self.collision_robot1_wall = [] #to be continue
     def BeginContact(self, contact):
         pass
     def EndContact(self, contact):
@@ -49,6 +51,15 @@ class ICRAContactListener(contactListener):
             self.nuke.append(u1)
         if u2.split("_")[0] == "bullet":
             self.nuke.append(u2)
+
+        if u1.split("_")[0] == "robot0":
+            self.collision_robot0_wall.append(u1)
+        if u2.split("_")[0] == "robot0":
+            self.collision_robot0_wall.append(u2)
+        if u1.split("_")[0] == "robot1":
+            self.collision_robot1_wall.append(u1)
+        if u2.split("_")[0] == "robot1":
+            self.collision_robot1_wall.append(u2)
         
     def PostSolve(self, contact, impulse):
         pass
@@ -69,7 +80,8 @@ class CarRacing(gym.Env, EzPickle):
         self.invisible_state_window = None
         self.invisible_video_window = None
         self.road = None
-        self.car = None
+        self.car0 = None
+        self.car1 = None
         self.map = None
         self.bullets = None
         self.reward = 0.0
@@ -84,8 +96,10 @@ class CarRacing(gym.Env, EzPickle):
         return [seed]
 
     def _destroy(self):
-        if self.car:
-            self.car.destroy()
+        if self.car0:
+            self.car0.destroy()
+        if self.car1:
+            self.car1.destroy()
         if self.map:
             self.map.destroy()
         if self.bullets:
@@ -98,7 +112,8 @@ class CarRacing(gym.Env, EzPickle):
         self.t = 0.0
         self.human_render = False
 
-        self.car = Car(self.world, -np.pi/2, 0.5, 4.5)
+        self.car0 = Car(self.world, -np.pi/2, 0.5, 4.5,"robot0")
+        self.car1 = Car(self.world, -np.pi / 2, 3.5, 4.5, "robot1")
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
 
@@ -106,18 +121,28 @@ class CarRacing(gym.Env, EzPickle):
 
     def step(self, action):
         nuke = self.contactListener_keepref.nuke
+        collision_robot0_wall = self.contactListener_keepref.collision_robot0_wall
+        collision_robot1_wall = self.contactListener_keepref.collision_robot1_wall
         if len(nuke) > 0:
             self.bullets.destroyContacted(nuke)
             self.contactListener_keepref.nuke = []
         if action is not None:
-            self.car.steer(-action[0])
-            self.car.gas(action[1])
-            self.car.brake(action[2])
+            self.car0.steer(-action[0])
+            self.car0.gas(action[1])
+            self.car0.brake(action[2])
             if action[3] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-                init_angle, init_pos = self.car.getAnglePos()
+                init_angle, init_pos = self.car0.getAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
+            if len(collision_robot0_wall) > 0:
+                self.car0.health(1)
+                self.contactListener_keepref.collision_robot0_wall=[]
+            if len(collision_robot1_wall) > 0:
+                self.car1.health(1)
+                self.contactListener_keepref.collision_robot1_wall=[]
 
-        self.car.step(1.0/FPS)
+
+        self.car0.step(1.0/FPS)
+        self.car1.step(1.0 / FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
@@ -127,12 +152,13 @@ class CarRacing(gym.Env, EzPickle):
         done = False
         if action is not None: # First step without action, called from reset()
             self.reward -= 0.1
-            # We actually don't want to count fuel spent, we want car to be faster.
-            #self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
-            self.car.fuel_spent = 0.0
+            # We actually don't want to count fuel spent, we want car0 to be faster.
+            #self.reward -=  10 * self.car0.fuel_spent / ENGINE_POWER
+            self.car0.fuel_spent = 0.0
+            self.car1.fuel_spent = 0.0
             step_reward = self.reward - self.prev_reward
             self.prev_reward = self.reward
-            x, y = self.car.hull.position
+            x, y = self.car0.hull.position
             if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
                 step_reward = -100
@@ -146,6 +172,9 @@ class CarRacing(gym.Env, EzPickle):
             self.score_label = pyglet.text.Label('0000', font_size=36,
                 x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                 color=(255,255,255,255))
+            self.health_label = pyglet.text.Label('0000', font_size=16,
+                x=520, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
+                color=(255,255,255,255))
             self.transform = rendering.Transform()
 
         if "t" not in self.__dict__: return  # reset() not called yet
@@ -153,13 +182,13 @@ class CarRacing(gym.Env, EzPickle):
         zoom = ZOOM*SCALE
         zoom_state  = ZOOM*SCALE*STATE_W/WINDOW_W
         zoom_video  = ZOOM*SCALE*VIDEO_W/WINDOW_W
-        #scroll_x = self.car.hull.position[0]
-        #scroll_y = self.car.hull.position[1]
-        #angle = -self.car.hull.angle
+        #scroll_x = self.car0.hull.position[0]
+        #scroll_y = self.car0.hull.position[1]
+        #angle = -self.car0.hull.angle
         scroll_x = 4.0
         scroll_y = 0.0
         angle = 0
-        #vel = self.car.hull.linearVelocity
+        #vel = self.car0.hull.linearVelocity
         #if np.linalg.norm(vel) > 0.5:
             #angle = math.atan2(vel[0], vel[1])
         self.transform.set_scale(zoom, zoom)
@@ -169,7 +198,8 @@ class CarRacing(gym.Env, EzPickle):
         #self.transform.set_rotation(angle)
 
         self.map.draw(self.viewer)
-        self.car.draw(self.viewer, mode!="state_pixels")
+        self.car0.draw(self.viewer, mode!="state_pixels")
+        self.car1.draw(self.viewer, mode != "state_pixels")
         self.bullets.draw(self.viewer)
 
         arr = None
@@ -241,7 +271,9 @@ class CarRacing(gym.Env, EzPickle):
 
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward
+        self.health_label.text = "health left Car0 : {} Car1: {} ".format(self.car0._health(),self.car1._health())
         self.score_label.draw()
+        self.health_label.draw()
 
 
 if __name__=="__main__":
