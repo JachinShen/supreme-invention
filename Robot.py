@@ -47,6 +47,7 @@ WHEEL_WHITE = (0.3,0.3,0.3)
 MUD_COLOR   = (0.4,0.4,0.0)
 
 BULLET_BOX = (40*SIZE, 10*SIZE)
+GUN_BOX = (100*SIZE, 20*SIZE)
 
 class Car:
     def __init__(self, world, init_angle, init_x, init_y,userData):
@@ -111,11 +112,38 @@ class Car:
             w.tiles = set()
             w.userData = w
             self.wheels.append(w)
-        self.drawlist =  self.wheels + [self.hull]
+
+        self.gun = self.world.CreateDynamicBody(
+            position = (init_x, init_y),
+            angle = init_angle + math.pi/2,
+            fixtures = [
+                fixtureDef(
+                    shape = polygonShape(box=GUN_BOX), 
+                    maskBits=0x00,
+                    density=1.0)
+            ]
+        )
+        self.gun_joint = self.world.CreateJoint(revoluteJointDef(
+            bodyA=self.hull,
+            bodyB=self.gun,
+            localAnchorA=(0,0),
+            localAnchorB=(-GUN_BOX[0],0),
+            enableMotor=True,
+            enableLimit=True,
+            maxMotorTorque=180*900*SIZE*SIZE,
+            motorSpeed = 0.0,
+            lowerAngle = -math.pi/2,
+            upperAngle = +math.pi/2,
+        ))
+        self.gun.color = (0.1, 0.1, 0.1)
+        self.drawlist =  self.wheels + [self.hull, self.gun]
         self.particles = []
 
     def getAnglePos(self):
-        return self.hull.angle, self.hull.position
+        return self.gun.angle, self.gun.position
+
+    def moveHead(self, angular_vel):
+        self.gun_joint.motorSpeed = angular_vel
 
     def gas(self, gas):
         'control: rear wheel drive'
@@ -260,4 +288,7 @@ class Car:
         for w in self.wheels:
             self.world.DestroyBody(w)
         self.wheels = []
+        if self.gun:
+            self.world.DestroyBody(self.gun)
+        self.gun = None
 
