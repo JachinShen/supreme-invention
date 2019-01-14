@@ -50,7 +50,7 @@ BULLET_BOX = (40*SIZE, 10*SIZE)
 GUN_BOX = (100*SIZE, 20*SIZE)
 
 class Car:
-    def __init__(self, world, init_angle, init_x, init_y,userData):
+    def __init__(self, world, init_angle, init_x, init_y,userData, car_id, group='red'):
         self.world = world
         self.hull = self.world.CreateDynamicBody(
             position = (init_x, init_y),
@@ -138,6 +138,9 @@ class Car:
         self.gun.color = (0.1, 0.1, 0.1)
         self.drawlist =  self.wheels + [self.hull, self.gun]
         self.particles = []
+        self.group = group
+        self.car_id = car_id
+        self.buffLeftTime = 0
 
     def getAnglePos(self):
         return self.gun.angle, self.gun.position
