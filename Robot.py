@@ -94,6 +94,8 @@ class Car:
             w.steer = 0.0
             w.phase = 0.0  # wheel angle
             w.omega = 0.0  # angular velocity
+            w.reverse = 0.0
+            w.rotation=0.0
             w.skid_start = None
             w.skid_particle = None
             rjd = revoluteJointDef(
@@ -145,6 +147,14 @@ class Car:
     def moveHead(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
 
+    def reverse(self, reverse):
+        'control: rear wheel drive'
+        reverse = np.clip(reverse, 0, 1)
+        for w in self.wheels[2:4]:
+            diff = reverse - w.reverse
+            if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
+            w.reverse += diff
+
     def gas(self, gas):
         'control: rear wheel drive'
         gas = np.clip(gas, 0, 1)
@@ -152,6 +162,7 @@ class Car:
             diff = gas - w.gas
             if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
             w.gas += diff
+
     def health(self, health):
         for w in self.wheels[2:4]:
             w.health -= health
@@ -170,6 +181,11 @@ class Car:
         self.wheels[0].steer = s
         self.wheels[1].steer = s
 
+    def rotation(self, r):
+        'control: steer s=-1..1, it takes time to rotate steering wheel from side to side, s is target position'
+        self.wheels[0].rotation = r
+        self.wheels[1].rotation = r
+
     def step(self, dt):
         for w in self.wheels:
             # Steer each wheel
@@ -185,16 +201,16 @@ class Car:
                 grass = False
 
             # Force
-            forw = w.GetWorldVector( (0,1) )
+            forw = w.GetWorldVector( (0,1) )  # forward
             side = w.GetWorldVector( (1,0) )
             v = w.linearVelocity
-            vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed
-            vs = side[0]*v[0] + side[1]*v[1]  # side speed
 
+            vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
+            vs = side[0]*v[0] + side[1]*v[1]  # side speed
             # WHEEL_MOMENT_OF_INERTIA*np.square(w.omega)/2 = E -- energy
             # WHEEL_MOMENT_OF_INERTIA*w.omega * domega/dt = dE/dt = W -- power
             # domega = dt*W/WHEEL_MOMENT_OF_INERTIA/w.omega
-            w.omega += dt*ENGINE_POWER*w.gas/WHEEL_MOMENT_OF_INERTIA/(abs(w.omega)+5.0)  # small coef not to divide by zero
+            w.omega += (dt*ENGINE_POWER*w.gas-dt*ENGINE_POWER*w.reverse)/WHEEL_MOMENT_OF_INERTIA/(abs(w.omega)+5.0)  # small coef not to divide by zero
             # self.fuel_spent += dt*ENGINE_POWER*w.gas
 
             if w.brake >= 0.9:
@@ -207,14 +223,16 @@ class Car:
                 w.omega += dir*val
             w.phase += w.omega*dt
 
-            vr = w.omega*w.wheel_rad  # rotating wheel speed
-            f_force = -vf + vr        # force direction is direction of speed difference
+            vr = w.omega*w.wheel_rad  # rotating wheel speed!vf:firction
+            f_force = -vf    +vr    # force direction is direction of speed difference
             p_force = -vs
 
+            r_force= w.rotation*w.wheel_rad
             # Physically correct is to always apply friction_limit until speed is equal.
             # But dt is finite, that will lead to oscillations if difference is already near zero.
             f_force *= 205000*SIZE*SIZE  # Random coefficient to cut oscillations in few steps (have no effect on friction_limit)
             p_force *= 205000*SIZE*SIZE
+            r_force *= 205000*SIZE*SIZE
             force = np.sqrt(np.square(f_force) + np.square(p_force))
 
             # Skid trace
@@ -240,8 +258,8 @@ class Car:
             w.omega -= dt*f_force*w.wheel_rad/WHEEL_MOMENT_OF_INERTIA
 
             w.ApplyForceToCenter( (
-                p_force*side[0] + f_force*forw[0],
-                p_force*side[1] + f_force*forw[1]), True )
+                (r_force+p_force)*side[0] + f_force*forw[0],
+                                  (r_force+p_force)*side[1] + f_force*forw[1]), True )
 
     def draw(self, viewer, draw_particles=True):
         #if draw_particles:
