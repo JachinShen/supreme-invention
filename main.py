@@ -135,8 +135,10 @@ class CarRacing(gym.Env, EzPickle):
         if action is not None:
             self.car0.steer(-action[0])
             self.car0.gas(action[1])
-            self.car0.brake(action[2])
+            self.car0.brake(action[6])
+            self.car0.reverse(action[2])
             self.car0.moveHead(action[4])
+            self.car0.rotation(action[5])
             if action[3] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
                 init_angle, init_pos = self.car0.getAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
@@ -296,28 +298,31 @@ class CarRacing(gym.Env, EzPickle):
 
 if __name__=="__main__":
     from pyglet.window import key
-    '''
-    a = [steer, gas, brake, bullet???, moveHead]
-    '''
-    a = np.array( [0.0, 0.0, 0.0, 0.0, 0.0] )
+    a = np.array( [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] ) # action[7] for steer, gas, reverse, shoot, move head, rotation, brake
     def key_press(k, mod):
         global restart
         if k==0xff0d: restart = True
-        if k==key.LEFT:  a[0] = -1.0
-        if k==key.RIGHT: a[0] = +1.0
-        if k==key.UP:    a[1] = +0.2
-        if k==key.DOWN:  a[2] = +0.8   # set 1.0 for wheels to block to zero rotation
+        if k==key.LEFT:  a[5] = -5.0
+        if k==key.RIGHT: a[5] = +5.0
+        if k==key.UP:    a[1] = +0.1
+        if k==key.DOWN:  a[2] = +0.1   # set 1.0 for wheels to block to zero rotation
         if k==key.SPACE: a[3] = +1.0
         if k==key.Q:     a[4] = +0.5
         if k==key.E:     a[4] = -0.5
+        if k==key.Z:     a[0] = -2
+        if k==key.C:     a[0] = +2
+        if k==key.S:     a[6] = 1.0
     def key_release(k, mod):
-        if k==key.LEFT  and a[0]==-1.0: a[0] = 0
-        if k==key.RIGHT and a[0]==+1.0: a[0] = 0
+        if k==key.LEFT  : a[5] = 0
+        if k==key.RIGHT : a[5] = 0
         if k==key.UP:    a[1] = 0
         if k==key.DOWN:  a[2] = 0
         if k==key.SPACE: a[3] = 0
         if k==key.Q:     a[4] = 0
         if k==key.E:     a[4] = 0
+        if k==key.Z:     a[0] = 0
+        if k==key.C:     a[0] = 0
+        if k==key.S:     a[6] = 0
     env = CarRacing()
     env.render()
     record_video = False
