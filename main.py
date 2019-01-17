@@ -16,6 +16,8 @@ from Robot import Car
 from ICRAMap import ICRAMap
 from Bullet import Bullet
 
+from BuffArea import AllBuffArea
+
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
 VIDEO_W = 600
@@ -83,6 +85,7 @@ class CarRacing(gym.Env, EzPickle):
         self.car0 = None
         self.car1 = None
         self.map = None
+        self.buff_areas = None
         self.bullets = None
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -114,10 +117,11 @@ class CarRacing(gym.Env, EzPickle):
         self.t = 0.0
         self.human_render = False
 
-        self.car0 = Car(self.world, -np.pi/2, 0.5, 4.5,"robot0")
-        self.car1 = Car(self.world, -np.pi / 2, 3.5, 4.5, "robot1")
+        self.car0 = Car(self.world, -np.pi/2, 0.5, 4.5,"robot0", 0, 'red')
+        self.car1 = Car(self.world, -np.pi / 2, 3.5, 4.5, "robot1", 1, 'blue')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
+        self.buff_areas = AllBuffArea()
 
         return self.step(None)[0]
 
@@ -148,6 +152,8 @@ class CarRacing(gym.Env, EzPickle):
         self.car1.step(1.0 / FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
+
+        self.buff_areas.detect([self.car0, self.car1])
 
         self.state = self.render("state_pixels")
 
@@ -270,6 +276,15 @@ class CarRacing(gym.Env, EzPickle):
                 gl.glVertex3f(k*x + 0, k*y + k, 0)
                 gl.glVertex3f(k*x + k, k*y + k, 0)
         gl.glEnd()
+        self.buff_areas.render(gl)
+
+        # self.render_buff_area(self.map.buff_area)
+
+    # def render_buff_area(self, buff_area):
+    #     gl.Begin(gl.GL_QUADS)
+    #     gl.glColor4f(1.0, 0.0, 0.0, 0.5)
+    #     for pos, box in buff_area:
+    #         pass
 
 
     def render_indicators(self, W, H):
@@ -281,6 +296,9 @@ class CarRacing(gym.Env, EzPickle):
 
 if __name__=="__main__":
     from pyglet.window import key
+    '''
+    a = [steer, gas, brake, bullet???, moveHead]
+    '''
     a = np.array( [0.0, 0.0, 0.0, 0.0, 0.0] )
     def key_press(k, mod):
         global restart
