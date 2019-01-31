@@ -15,14 +15,14 @@ class AllBuffArea(object):
                           BuffArea(BUFFAREABOX_BLUE, 'blue', COLOR_BLUE, self.maxBuffLeftTime, self.triggerTime)]
         self.preTime = time.time()
 
-    def detect(self, cars):
-        for car in cars:
-            if(car.buffLeftTime > 0):
-                car.buffLeftTime -= time.time() - self.preTime
-            car.buffLeftTime = max(0, car.buffLeftTime)
+    def detect(self, robots):
+        for robot in robots:
+            if(robot.buffLeftTime > 0):
+                robot.buffLeftTime -= time.time() - self.preTime
+            robot.buffLeftTime = max(0, robot.buffLeftTime)
             # print(car.car_id, car.buffLeftTime)
         for buff in self.buffAreas:
-            buff.detect(cars)
+            buff.detect(robots)
         self.preTime = time.time()
 
     def render(self, gl):
@@ -44,11 +44,11 @@ class BuffArea(object):
             if(car.buffLeftTime > 0):
                 continue
             if(self.cover(car)):
-                if(car.car_id not in self.stayTime.keys()):
-                    self.stayTime[car.car_id] = 0
-                self.stayTime[car.car_id] += time.time() - self.preTime
+                if(car.robot_id not in self.stayTime.keys()):
+                    self.stayTime[car.robot_id] = 0
+                self.stayTime[car.robot_id] += time.time() - self.preTime
             else:
-                self.stayTime[car.car_id] = 0
+                self.stayTime[car.robot_id] = 0
         self.preTime = time.time()
 
         if self.stayTime and (max(self.stayTime.values())) >= self.triggerTime:
@@ -57,8 +57,8 @@ class BuffArea(object):
                 if(car.group == self.group):
                     car.buffLeftTime = self.maxBuffLeftTime
 
-    def cover(self, car):
-        return self.isLocated((car.hull.position.x, car.hull.position.y), self.box)
+    def cover(self, robot):
+        return self.isLocated((robot.hull.position.x, robot.hull.position.y), self.box)
 
     def isLocated(self, point, box):
         px, py = point

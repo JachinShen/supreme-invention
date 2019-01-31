@@ -40,11 +40,10 @@ class Bullet:
                 path = [trans*v for v in f.shape.vertices]
                 viewer.draw_polygon(path, color=obj.color)
 
-    def destroyContacted(self, nuke):
-        for u in nuke:
-            body = self.bullets.pop(u, "repeated")
-            if body != "repeated":
-                self.world.DestroyBody(body)
+    def destroyById(self, bullet_id):
+        body = self.bullets.pop(bullet_id, "repeated")
+        if body != "repeated":
+            self.world.DestroyBody(body)
 
     def destroy(self):
         for bullet in self.bullets.items():

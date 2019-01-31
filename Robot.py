@@ -21,8 +21,8 @@ WHEELPOS = [
     (-55,-82), (+55,-82)
     ]
 HULL_POLY1 =[
-    (-60,+130), (+60,+130),
-    (+60,+110), (-60,+110)
+    (-40,+110), (+40,+110),
+    (+40,-110), (-40,-110)
     ]
 HULL_POLY2 =[
     (-15,+120), (+15,+120),
@@ -46,11 +46,11 @@ WHEEL_COLOR = (0.0,0.0,0.0)
 WHEEL_WHITE = (0.3,0.3,0.3)
 MUD_COLOR   = (0.4,0.4,0.0)
 
-BULLET_BOX = (40*SIZE, 10*SIZE)
-GUN_BOX = (100*SIZE, 20*SIZE)
+BULLET_BOX = (20*SIZE, 10*SIZE)
+GUN_BOX = (50*SIZE, 20*SIZE)
 
-class Car:
-    def __init__(self, world, init_angle, init_x, init_y,userData, car_id, group='red'):
+class Robot:
+    def __init__(self, world, init_angle, init_x, init_y,userData, robot_id, group='red'):
         self.world = world
         self.hull = self.world.CreateDynamicBody(
             position = (init_x, init_y),
@@ -58,18 +58,17 @@ class Car:
             fixtures = [
                 fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY1 ]),
                     density=10.0, restitution=1),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY2 ]),
-                    density=10.0, restitution=1),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY3 ]),
-                    density=10.0, restitution=1),
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY4 ]),
-                    density=10.0, restitution=1),
+                #fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY2 ]),
+                    #density=10.0, restitution=1),
+                #fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY3 ]),
+                    #density=10.0, restitution=1),
+                #fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY4 ]),
+                    #density=10.0, restitution=1),
                 ]
             )
         self.hull.color = (0.8,0.0,0.0)
         self.hull.userData = userData
         self.wheels = []
-        self.fuel_spent = 0.0
         WHEEL_POLY = [
             (-WHEEL_W,+WHEEL_R), (+WHEEL_W,+WHEEL_R),
             (+WHEEL_W,-WHEEL_R), (-WHEEL_W,-WHEEL_R)
@@ -88,7 +87,6 @@ class Car:
                     )
             w.wheel_rad = front_k*WHEEL_R*SIZE
             w.color = WHEEL_COLOR
-            w.health = 100.0
             w.gas   = 0.0
             w.brake = 0.0
             w.steer = 0.0
@@ -96,8 +94,6 @@ class Car:
             w.omega = 0.0  # angular velocity
             w.reverse = 0.0
             w.rotation=0.0
-            w.skid_start = None
-            w.skid_particle = None
             rjd = revoluteJointDef(
                 bodyA=self.hull,
                 bodyB=w,
@@ -141,8 +137,10 @@ class Car:
         self.drawlist =  self.wheels + [self.hull, self.gun]
         self.particles = []
         self.group = group
-        self.car_id = car_id
+        self.robot_id = robot_id
+        self.health = 1000.0
         self.buffLeftTime = 0
+        self.command = {"ahead": 0, "rotate": 0}
 
     def getAnglePos(self):
         return self.gun.angle, self.gun.position
@@ -158,26 +156,14 @@ class Car:
             if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
             w.reverse += diff
 
-    def gas(self, gas):
-        'control: rear wheel drive'
-        gas = np.clip(gas, 0, 1)
-        for w in self.wheels[2:4]:
-            diff = gas - w.gas
-            if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
-            w.gas += diff
+    def goAhead(self, gas):
+        self.command["ahead"] = gas
 
-    def health(self, health):
-        for w in self.wheels[2:4]:
-            w.health -= health
+    def loseHealth(self, damage):
+        self.health -= damage
+
     def _health(self):
-        for w in self.wheels[2:4]:
-            return w.health
-
-
-    def brake(self, b):
-        'control: brake b=0..1, more than 0.9 blocks wheels to zero rotation'
-        for w in self.wheels:
-            w.brake = b
+        return self.health
 
     def steer(self, s):
         'control: steer s=-1..1, it takes time to rotate steering wheel from side to side, s is target position'
@@ -185,89 +171,34 @@ class Car:
         self.wheels[1].steer = s
 
     def rotation(self, r):
-        'control: steer s=-1..1, it takes time to rotate steering wheel from side to side, s is target position'
-        self.wheels[0].rotation = r
-        self.wheels[1].rotation = r
+        self.command["rotate"] = r
+        #'control: steer s=-1..1, it takes time to rotate steering wheel from side to side, s is target position'
+        #self.wheels[0].rotation = r
+        #self.wheels[1].rotation = r
 
     def step(self, dt):
-        for w in self.wheels:
-            # Steer each wheel
-            dir = np.sign(w.steer - w.joint.angle)
-            val = abs(w.steer - w.joint.angle)
-            w.joint.motorSpeed = dir*min(50.0*val, 3.0)
+        forw = self.hull.GetWorldVector( (0,1) )  # forward
+        side = self.hull.GetWorldVector( (1,0) )
+        v = self.hull.linearVelocity
+        vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
+        vs = side[0]*v[0] + side[1]*v[1]  # side speed
+        f_force = -vf + self.command["ahead"]
+        p_force = -vs
 
-            # Position => friction_limit
-            grass = True
-            friction_limit = FRICTION_LIMIT*0.6  # Grass friction if no tile
-            for tile in w.tiles:
-                friction_limit = max(friction_limit, FRICTION_LIMIT*tile.road_friction)
-                grass = False
-
-            # Force
-            forw = w.GetWorldVector( (0,1) )  # forward
-            side = w.GetWorldVector( (1,0) )
-            v = w.linearVelocity
-
-            vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
-            vs = side[0]*v[0] + side[1]*v[1]  # side speed
-            # WHEEL_MOMENT_OF_INERTIA*np.square(w.omega)/2 = E -- energy
-            # WHEEL_MOMENT_OF_INERTIA*w.omega * domega/dt = dE/dt = W -- power
-            # domega = dt*W/WHEEL_MOMENT_OF_INERTIA/w.omega
-            w.omega += (dt*ENGINE_POWER*w.gas-dt*ENGINE_POWER*w.reverse)/WHEEL_MOMENT_OF_INERTIA/(abs(w.omega)+5.0)  # small coef not to divide by zero
-            # self.fuel_spent += dt*ENGINE_POWER*w.gas
-
-            if w.brake >= 0.9:
-                w.omega = 0
-            elif w.brake > 0:
-                BRAKE_FORCE = 15    # radians per second
-                dir = -np.sign(w.omega)
-                val = BRAKE_FORCE*w.brake
-                if abs(val) > abs(w.omega): val = abs(w.omega)  # low speed => same as = 0
-                w.omega += dir*val
-            w.phase += w.omega*dt
-
-            vr = w.omega*w.wheel_rad  # rotating wheel speed!vf:firction
-            f_force = -vf    +vr    # force direction is direction of speed difference
-            p_force = -vs
-
-            r_force= w.rotation*w.wheel_rad
-            # Physically correct is to always apply friction_limit until speed is equal.
-            # But dt is finite, that will lead to oscillations if difference is already near zero.
-            f_force *= 205000*SIZE*SIZE  # Random coefficient to cut oscillations in few steps (have no effect on friction_limit)
-            p_force *= 205000*SIZE*SIZE
-            r_force *= 205000*SIZE*SIZE
-            force = np.sqrt(np.square(f_force) + np.square(p_force))
-
-            # Skid trace
-            if abs(force) > 2.0*friction_limit:
-                if w.skid_particle and w.skid_particle.grass==grass and len(w.skid_particle.poly) < 30:
-                    w.skid_particle.poly.append( (w.position[0], w.position[1]) )
-                elif w.skid_start is None:
-                    w.skid_start = w.position
-                else:
-                    w.skid_particle = self._create_particle( w.skid_start, w.position, grass )
-                    w.skid_start = None
-            else:
-                w.skid_start = None
-                w.skid_particle = None
-
-            if abs(force) > friction_limit:
-                f_force /= force
-                p_force /= force
-                force = friction_limit  # Correct physics here
-                f_force *= force
-                p_force *= force
-
-            w.omega -= dt*f_force*w.wheel_rad/WHEEL_MOMENT_OF_INERTIA
-
-            w.ApplyForceToCenter( (
-                (r_force+p_force)*side[0] + f_force*forw[0],
-                                  (r_force+p_force)*side[1] + f_force*forw[1]), True )
+        r_force= 0
+        # Physically correct is to always apply friction_limit until speed is equal.
+        # But dt is finite, that will lead to oscillations if difference is already near zero.
+        f_force *= 205000*SIZE*SIZE  # Random coefficient to cut oscillations in few steps (have no effect on friction_limit)
+        p_force *= 205000*SIZE*SIZE
+        r_force *= 205000*SIZE*SIZE
+        self.hull.ApplyForceToCenter( (
+            (r_force+p_force)*side[0] + f_force*forw[0],
+                                (r_force+p_force)*side[1] + f_force*forw[1]), True )
+        
+        torque = - self.hull.angularVelocity*0.001 + self.command["rotate"] * 0.005
+        self.hull.ApplyAngularImpulse(torque, True)
 
     def draw(self, viewer, draw_particles=True):
-        #if draw_particles:
-            #for p in self.particles:
-                #viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
         for obj in self.drawlist:
             for f in obj.fixtures:
                 trans = f.body.transform
