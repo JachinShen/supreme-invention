@@ -140,7 +140,7 @@ class Robot:
         self.robot_id = robot_id
         self.health = 1000.0
         self.buffLeftTime = 0
-        self.command = {"ahead": 0, "rotate": 0}
+        self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
 
     def getAnglePos(self):
         return self.gun.angle, self.gun.position
@@ -158,6 +158,9 @@ class Robot:
 
     def goAhead(self, gas):
         self.command["ahead"] = gas
+    
+    def moveTransverse(self, transverse):
+        self.command["transverse"] = transverse
 
     def loseHealth(self, damage):
         self.health -= damage
@@ -183,7 +186,7 @@ class Robot:
         vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
         vs = side[0]*v[0] + side[1]*v[1]  # side speed
         f_force = -vf + self.command["ahead"]
-        p_force = -vs
+        p_force = -vs + self.command["transverse"]
 
         r_force= 0
         # Physically correct is to always apply friction_limit until speed is equal.

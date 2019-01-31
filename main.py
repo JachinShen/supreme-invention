@@ -151,7 +151,7 @@ class CarRacing(gym.Env, EzPickle):
 
         self.contactListener_keepref.collision_bullet_robot = []
         if action is not None:
-            self.robots["robot_0"].steer(-action[0])
+            self.robots["robot_0"].moveTransverse(-action[0])
             self.robots["robot_0"].goAhead(action[1])
             self.robots["robot_0"].moveHead(action[3])
             self.robots["robot_0"].rotation(action[4])
@@ -313,27 +313,27 @@ if __name__ == "__main__":
     def key_press(k, mod):
         global restart
         if k == 0xff0d: restart = True
-        if k == key.LEFT: a[4] = +1.0
-        if k == key.RIGHT: a[4] = -1.0
-        if k == key.UP: a[1] = +1.0
-        if k == key.DOWN: a[1] = -1.0
+        if k == key.A: a[0] = +1.0
+        if k == key.D: a[0] = -1.0
+        if k == key.W: a[1] = +1.0
+        if k == key.S: a[1] = -1.0
         if k == key.SPACE: a[2] = +1.0
-        if k == key.Q: a[3] = +0.5
-        if k == key.E: a[3] = -0.5
-        if k == key.Z: a[0] = -2
-        if k == key.C: a[0] = +2
+        if k == key.Q: a[4] = +0.5
+        if k == key.E: a[4] = -0.5
+        if k == key.Z: a[3] = -2
+        if k == key.C: a[3] = +2
         #if k == key.S: a[6] = 1.0
 
     def key_release(k, mod):
-        if k == key.LEFT: a[4] = 0
-        if k == key.RIGHT: a[4] = 0
-        if k == key.UP: a[1] = 0
-        if k == key.DOWN: a[1] = 0
+        if k == key.A: a[0] = 0
+        if k == key.D: a[0] = 0
+        if k == key.W: a[1] = 0
+        if k == key.S: a[1] = 0
         if k == key.SPACE: a[2] = 0
-        if k == key.Q: a[3] = 0
-        if k == key.E: a[3] = 0
-        if k == key.Z: a[0] = 0
-        if k == key.C: a[0] = 0
+        if k == key.Q: a[4] = 0
+        if k == key.E: a[4] = 0
+        if k == key.Z: a[3] = 0
+        if k == key.C: a[3] = 0
         #if k == key.S: a[6] = 0
 
     env = CarRacing()
