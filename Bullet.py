@@ -14,7 +14,7 @@ class Bullet:
         self.ctr = 1
 
     def shoot(self, init_angle, init_pos):
-        angle = init_angle
+        angle = init_angle + math.pi/2
         x, y = init_pos
         x += math.cos(angle) * 0.2
         y += math.sin(angle) * 0.2
@@ -24,7 +24,7 @@ class Bullet:
             fixtures = [
                 fixtureDef(
                     shape = polygonShape(box=BULLET_BOX), 
-                    density=1.0)
+                    density=0.1)
             ]
         )
         bullet.color = (0.0, 0.0, 0.0)

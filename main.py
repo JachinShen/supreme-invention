@@ -103,7 +103,7 @@ class CarRacing(gym.Env, EzPickle):
 
         self.action_space = spaces.Box(np.array([-1, -1, 0, -1]),
                                        np.array([+1, +1, +1, +1]), dtype=np.float32)
-        # steer, gas, shoot, move head
+        # transverse, gas, shoot, move head
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
 
@@ -130,6 +130,7 @@ class CarRacing(gym.Env, EzPickle):
         for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 3.5]):
             self.robots[robot_name] = Robot(
                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+                #self.world, 0, x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
@@ -152,9 +153,9 @@ class CarRacing(gym.Env, EzPickle):
         self.contactListener_keepref.collision_bullet_robot = []
         if action is not None:
             self.robots["robot_0"].moveTransverse(-action[0])
-            self.robots["robot_0"].goAhead(action[1])
-            self.robots["robot_0"].moveHead(action[3])
-            self.robots["robot_0"].rotation(action[4])
+            self.robots["robot_0"].moveAheadBack(action[1])
+            self.robots["robot_0"].rotateCloudTerrance(action[3])
+            self.robots["robot_0"].turnLeftRight(action[4])
             if action[2] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
                 init_angle, init_pos = self.robots["robot_0"].getAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
@@ -300,7 +301,7 @@ class CarRacing(gym.Env, EzPickle):
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
-            self.robots["robot_0"]._health(), self.robots["robot_1"]._health())
+            self.robots["robot_0"].health, self.robots["robot_1"].health)
         self.score_label.draw()
         self.health_label.draw()
 
@@ -320,9 +321,8 @@ if __name__ == "__main__":
         if k == key.SPACE: a[2] = +1.0
         if k == key.Q: a[4] = +0.5
         if k == key.E: a[4] = -0.5
-        if k == key.Z: a[3] = -2
-        if k == key.C: a[3] = +2
-        #if k == key.S: a[6] = 1.0
+        if k == key.Z: a[3] = +2
+        if k == key.C: a[3] = -2
 
     def key_release(k, mod):
         if k == key.A: a[0] = 0
@@ -334,7 +334,6 @@ if __name__ == "__main__":
         if k == key.E: a[4] = 0
         if k == key.Z: a[3] = 0
         if k == key.C: a[3] = 0
-        #if k == key.S: a[6] = 0
 
     env = CarRacing()
     env.render()

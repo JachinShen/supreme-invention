@@ -10,41 +10,7 @@ from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revolute
 #
 # Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
 
-SIZE = 0.02
-ENGINE_POWER            = 100000000*SIZE*SIZE
-WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE
-FRICTION_LIMIT          = 1000000*SIZE*SIZE     # friction ~= mass ~= size^2 (calculated implicitly using density)
-WHEEL_R  = 27
-WHEEL_W  = 14
-WHEELPOS = [
-    (-55,+80), (+55,+80),
-    (-55,-82), (+55,-82)
-    ]
-HULL_POLY1 =[
-    (-60,+130), (+60,+130),
-    (+60,+110), (-60,+110)
-    ]
-HULL_POLY2 =[
-    (-15,+120), (+15,+120),
-    (+20, +20), (-20,  20)
-    ]
-HULL_POLY3 =[
-    (+25, +20),
-    (+50, -10),
-    (+50, -40),
-    (+20, -90),
-    (-20, -90),
-    (-50, -40),
-    (-50, -10),
-    (-25, +20)
-    ]
-HULL_POLY4 =[
-    (-50,-120), (+50,-120),
-    (+50,-90),  (-50,-90)
-    ]
-WHEEL_COLOR = (0.0,0.0,0.0)
-WHEEL_WHITE = (0.3,0.3,0.3)
-MUD_COLOR   = (0.4,0.4,0.0)
+SIZE = 1
 
 COLOR_WHITE = (1.0, 1.0, 1.0)
 
