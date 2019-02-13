@@ -56,7 +56,6 @@ class Robot:
                     shape=polygonShape(vertices=[ (x*front_k*SIZE,y*front_k*SIZE) for x,y in WHEEL_POLY ]),
                     density=0.1, restitution=1, userData=userData)
                     )
-            print(wx, wy)
             rjd = revoluteJointDef(
                 bodyA=self.hull,
                 bodyB=w,
@@ -96,10 +95,10 @@ class Robot:
             upperAngle = +math.pi/2,
         ))
         self.gun.color = (0.1, 0.1, 0.1)
-        self.hull.angle = init_angle*1.04
         self.gun.angle = init_angle
+
+        self.hull.angle = init_angle*1.04
         self.drawlist =  self.wheels + [self.hull, self.gun]
-        self.particles = []
         self.group = group
         self.robot_id = robot_id
         self.health = 1000.0
@@ -107,13 +106,13 @@ class Robot:
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
 
     def getGunAnglePos(self):
-        return self.gun.angle, self.gun.position
+        return self.gun.angle+math.pi/2, self.gun.position
     
     def rotateCloudTerrance(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
 
     def setCloudTerrance(self, angle):
-        self.gun.angle = angle
+        self.gun.angle = angle - math.pi/2
 
     def moveAheadBack(self, gas):
         self.command["ahead"] = gas
@@ -136,11 +135,11 @@ class Robot:
         f_force = -vf + self.command["ahead"]
         p_force = -vs + self.command["transverse"]
 
-        f_force *= 205000*SIZE*SIZE  # Random coefficient to cut oscillations in few steps (have no effect on friction_limit)
+        f_force *= 205000*SIZE*SIZE
         p_force *= 205000*SIZE*SIZE
         self.hull.ApplyForceToCenter( (
             (p_force)*side[0] + f_force*forw[0],
-                                (p_force)*side[1] + f_force*forw[1]), True )
+            (p_force)*side[1] + f_force*forw[1]), True )
         
         torque = - self.hull.angularVelocity*0.001 + self.command["rotate"] * 0.005
         self.hull.ApplyAngularImpulse(torque, True)
@@ -162,4 +161,3 @@ class Robot:
         if self.gun:
             self.world.DestroyBody(self.gun)
         self.gun = None
-

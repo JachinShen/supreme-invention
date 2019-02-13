@@ -3,9 +3,6 @@ import math
 import numpy as np
 
 import Box2D
-from Box2D.b2 import (edgeShape, circleShape, fixtureDef,
-                      polygonShape, revoluteJointDef, contactListener)
-from Box2D import b2RayCastCallback
 
 import gym
 from gym import spaces
@@ -14,11 +11,12 @@ from gym.utils import colorize, seeding, EzPickle
 import pyglet
 from pyglet import gl
 
-from Robot import Robot
-from ICRAMap import ICRAMap
-from Bullet import Bullet
-
-from BuffArea import AllBuffArea
+from Objects.Robot import Robot
+from Objects.Bullet import Bullet
+from Referee.ICRAMap import ICRAMap
+from Referee.BuffArea import AllBuffArea
+from Referee.ICRAContactListener import ICRAContactListener
+from SupportAlgorithm.DetectCallback import detectCallback
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -28,76 +26,14 @@ WINDOW_W = 1200
 WINDOW_H = 1000
 
 SCALE = 40.0        # Track scale
-TRACK_RAD = 900/SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 400/SCALE  # Game over boundary
 FPS = 30
 ZOOM = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
-class detectCallback(b2RayCastCallback):
-    """
-    This class captures the closest hit shape.
-    """
-    def __init__(self, **kwargs):
-        b2RayCastCallback.__init__(self)
-        self.userData = None
+SCAN_RANGE = 5
 
-    # Called for each fixture found in the query. You control how the ray proceeds
-    # by returning a float that indicates the fractional length of the ray. By returning
-    # 0, you set the ray length to zero. By returning the current fraction, you proceed
-    # to find the closest point. By returning 1, you continue with the original ray
-    # clipping.
-    def ReportFixture(self, fixture, point, normal, fraction):
-        self.userData = fixture.userData
-        #self.point = fixture.body.position
-        #print(self.userData)
-        return fraction
-
-class ICRAContactListener(contactListener):
-    def __init__(self, env):
-        contactListener.__init__(self)
-        self.env = env
-        self.collision_bullet_robot = []
-        self.collision_bullet_wall = []
-        self.collision_robot_wall = []
-
-    def BeginContact(self, contact):
-        pass
-
-    def EndContact(self, contact):
-        pass
-
-    def PreSolve(self, contact, oldManifold):
-        u1 = contact.fixtureA.body.userData
-        u2 = contact.fixtureB.body.userData
-        #print(u1, u2)
-        if type(u1) != str or type(u2) != str:
-            return
-        u1_type = u1.split("_")[0]
-        u2_type = u2.split("_")[0]
-        if u1_type == "bullet" and u2_type == "robot":
-            self.collision_bullet_robot.append((u1, u2))
-        if u2_type == "bullet" and u1_type == "robot":
-            self.collision_bullet_robot.append((u2, u1))
-        if u1_type == "bullet" and u2_type == "wall":
-            self.collision_bullet_wall.append(u1)
-        if u2_type == "bullet" and u1_type == "wall":
-            self.collision_bullet_wall.append(u2)
-        if u1_type == "robot" and u2_type == "wall":
-            self.collision_robot_wall.append(u1)
-        if u2_type == "robot" and u1_type == "wall":
-            self.collision_robot_wall.append(u2)
-
-    def PostSolve(self, contact, impulse):
-        pass
-
-    def clean(self):
-        self.collision_bullet_robot = []
-        self.collision_bullet_wall = []
-        self.collision_robot_wall = []
-
-
-class CarRacing(gym.Env, EzPickle):
+class ICRAField(gym.Env, EzPickle):
     metadata = {
         'render.modes': ['human', 'rgb_array', 'state_pixels'],
         'video.frames_per_second': FPS
@@ -112,12 +48,10 @@ class CarRacing(gym.Env, EzPickle):
         self.viewer = None
         self.invisible_state_window = None
         self.invisible_video_window = None
-        self.road = None
         self.robots = {}
         self.map = None
         self.buff_areas = None
         self.bullets = None
-        self.detect_callback = None
         self.detect_callback = detectCallback()
 
         self.reward = 0.0
@@ -135,10 +69,13 @@ class CarRacing(gym.Env, EzPickle):
     def _destroy(self):
         for robot_name in self.robots.keys():
             self.robots[robot_name].destroy()
+        self.robots = {}
         if self.map:
             self.map.destroy()
+        self.map = None
         if self.bullets:
             self.bullets.destroy()
+        self.bullets = None
 
     def reset(self):
         self._destroy()
@@ -151,15 +88,13 @@ class CarRacing(gym.Env, EzPickle):
         for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 3.5]):
             self.robots[robot_name] = Robot(
                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
-                #self.world, 0, x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
 
         return self.step(None)[0]
 
-    def step(self, action):
-
+    def collision_step(self):
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
         collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
@@ -172,22 +107,22 @@ class CarRacing(gym.Env, EzPickle):
             self.robots[robot].loseHealth(10)
         self.contactListener_keepref.clean()
 
-        if action is not None:
-            self.robots["robot_0"].moveTransverse(-action[0])
-            self.robots["robot_0"].moveAheadBack(action[1])
-            self.robots["robot_0"].rotateCloudTerrance(action[3])
-            self.robots["robot_0"].turnLeftRight(action[4])
-            if action[2] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-                init_angle, init_pos = self.robots["robot_0"].getGunAnglePos()
-                self.bullets.shoot(init_angle, init_pos)
+    def action_step(self, robot_name, action):
+        self.robots[robot_name].moveTransverse(-action[0])
+        self.robots[robot_name].moveAheadBack(action[1])
+        if action[2] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+            init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
+            self.bullets.shoot(init_angle, init_pos)
+        self.robots[robot_name].rotateCloudTerrance(action[3])
+        self.robots[robot_name].turnLeftRight(action[4])
 
+    def detect_step(self):
         detected = []
         for i in range(-10, 10):
-            scan_range = 5
             angle, pos = self.robots["robot_0"].getGunAnglePos()
-            angle += math.pi / 2 + i/180*math.pi
+            angle += i/180*math.pi
             p1 = (pos[0] + 0.5*math.cos(angle), pos[1] + 0.5*math.sin(angle))
-            p2 = (pos[0] + scan_range*math.cos(angle), pos[1] + scan_range*math.sin(angle))
+            p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
             self.world.RayCast(self.detect_callback, p1, p2)
             u = self.detect_callback.userData
             if u in self.robots.keys():
@@ -199,14 +134,20 @@ class CarRacing(gym.Env, EzPickle):
                 #break
         if detected:
             angle = sum(detected) / len(detected)
-            self.robots["robot_0"].setCloudTerrance(angle-math.pi/2)
+            self.robots["robot_0"].setCloudTerrance(angle)
+
+    def step(self, action):
+        self.collision_step()
+        if action is not None:
+            self.action_step("robot_0", action)
+
+        self.detect_step()
+        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]])
 
         for robot_name in self.robots.keys():
             self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
-
-        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]])
 
         self.state = self.render("state_pixels")
 
@@ -376,7 +317,7 @@ if __name__ == "__main__":
         if k == key.Z: a[3] = 0
         if k == key.C: a[3] = 0
 
-    env = CarRacing()
+    env = ICRAField()
     env.render()
     record_video = False
     if record_video:

@@ -14,7 +14,7 @@ class Bullet:
         self.ctr = 1
 
     def shoot(self, init_angle, init_pos):
-        angle = init_angle + math.pi/2
+        angle = init_angle
         x, y = init_pos
         x += math.cos(angle) * 0.3
         y += math.sin(angle) * 0.3
