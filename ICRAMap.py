@@ -28,7 +28,13 @@ class ICRAMap:
         self.world = world
         self.borders = [world.CreateStaticBody(
             position=p,
-            shapes=polygonShape(box=b),
+            #shapes=polygonShape(box=b),
+            #userData = "wall"
+            fixtures = [
+                fixtureDef(
+                    shape = polygonShape(box=b), 
+                    density=0.01, userData="wall")
+            ]
             ) for p, b in zip(BORDER_POS, BORDER_BOX)]
         for i in range(len(self.borders)):
             self.borders[i].color = COLOR_WHITE

@@ -16,8 +16,8 @@ class Bullet:
     def shoot(self, init_angle, init_pos):
         angle = init_angle + math.pi/2
         x, y = init_pos
-        x += math.cos(angle) * 0.2
-        y += math.sin(angle) * 0.2
+        x += math.cos(angle) * 0.3
+        y += math.sin(angle) * 0.3
         bullet = self.world.CreateDynamicBody(
             position = (x, y),
             angle = angle,

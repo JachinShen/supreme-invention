@@ -3,10 +3,9 @@ import math
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape)
 
-# Top-down car dynamics simulation.
+# ICRA 2019 Robot Simulation
 #
 # Some ideas are taken from this great tutorial http://www.iforce2d.net/b2dtut/top-down-car by Chris Campbell.
-# This simulation is a bit more detailed, with wheels rotation.
 #
 # Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
 
@@ -16,21 +15,22 @@ WHEEL_R  = 50
 WHEEL_W  = 30
 ROBOT_WIDTH = ROBOT_SIZE - WHEEL_W*2
 ROBOT_LENGTH = ROBOT_SIZE
-HULL_POLY1 =[
+HULL_POLY =[
     (-ROBOT_WIDTH,+ROBOT_LENGTH), (+ROBOT_WIDTH,+ROBOT_LENGTH),
     (+ROBOT_WIDTH,-ROBOT_LENGTH), (-ROBOT_WIDTH,-ROBOT_LENGTH)
     ]
 WHEEL_POS_X = ROBOT_WIDTH + WHEEL_W
 WHEEL_POS_Y = ROBOT_LENGTH - WHEEL_R
-WHEELPOS = [
+WHEEL_POS = [
     (-WHEEL_POS_X,+WHEEL_POS_Y), (+WHEEL_POS_X,+WHEEL_POS_Y),
     (-WHEEL_POS_X,-WHEEL_POS_Y), (+WHEEL_POS_X,-WHEEL_POS_Y)
     ]
+WHEEL_POLY = [
+    (-WHEEL_W,+WHEEL_R), (+WHEEL_W,+WHEEL_R),
+    (+WHEEL_W,-WHEEL_R), (-WHEEL_W,-WHEEL_R)
+    ]
 WHEEL_COLOR = (0.0,0.0,0.0)
-WHEEL_WHITE = (0.3,0.3,0.3)
-MUD_COLOR   = (0.4,0.4,0.0)
 
-BULLET_BOX = (20*SIZE, 10*SIZE)
 GUN_BOX = (20*SIZE, 130*SIZE)
 
 class Robot:
@@ -40,26 +40,21 @@ class Robot:
             position = (init_x, init_y),
             angle = 0,
             fixtures = [
-                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY1 ]),
-                    density=1.0, restitution=1),
+                fixtureDef(shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in HULL_POLY ]),
+                    density=1.0, restitution=1, userData=userData),
                 ]
             )
         self.hull.color = (0.8,0.0,0.0)
         self.hull.userData = userData
         self.wheels = []
-        WHEEL_POLY = [
-            (-WHEEL_W,+WHEEL_R), (+WHEEL_W,+WHEEL_R),
-            (+WHEEL_W,-WHEEL_R), (-WHEEL_W,-WHEEL_R)
-            ]
-        for wx,wy in WHEELPOS[:]:
+        for wx,wy in WHEEL_POS:
             front_k = 1.0 if wy > 0 else 1.0
             w = self.world.CreateDynamicBody(
                 position = (init_x+wx*SIZE, init_y+wy*SIZE),
                 angle = 0,
                 fixtures = fixtureDef(
                     shape=polygonShape(vertices=[ (x*front_k*SIZE,y*front_k*SIZE) for x,y in WHEEL_POLY ]),
-                    density=0.1,
-                    restitution=1)
+                    density=0.1, restitution=1, userData=userData)
                     )
             print(wx, wy)
             rjd = revoluteJointDef(
@@ -85,8 +80,7 @@ class Robot:
             fixtures = [
                 fixtureDef(
                     shape = polygonShape(box=GUN_BOX), 
-                    maskBits=0x00,
-                    density=1.0)
+                    maskBits=0x00, density=0.01, userData=userData)
             ]
         )
         self.gun_joint = self.world.CreateJoint(revoluteJointDef(
@@ -112,11 +106,14 @@ class Robot:
         self.buffLeftTime = 0
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
 
-    def getAnglePos(self):
+    def getGunAnglePos(self):
         return self.gun.angle, self.gun.position
-
+    
     def rotateCloudTerrance(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
+
+    def setCloudTerrance(self, angle):
+        self.gun.angle = angle
 
     def moveAheadBack(self, gas):
         self.command["ahead"] = gas

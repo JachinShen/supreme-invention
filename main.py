@@ -5,6 +5,7 @@ import numpy as np
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef,
                       polygonShape, revoluteJointDef, contactListener)
+from Box2D import b2RayCastCallback
 
 import gym
 from gym import spaces
@@ -33,6 +34,24 @@ FPS = 30
 ZOOM = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
+class detectCallback(b2RayCastCallback):
+    """
+    This class captures the closest hit shape.
+    """
+    def __init__(self, **kwargs):
+        b2RayCastCallback.__init__(self)
+        self.userData = None
+
+    # Called for each fixture found in the query. You control how the ray proceeds
+    # by returning a float that indicates the fractional length of the ray. By returning
+    # 0, you set the ray length to zero. By returning the current fraction, you proceed
+    # to find the closest point. By returning 1, you continue with the original ray
+    # clipping.
+    def ReportFixture(self, fixture, point, normal, fraction):
+        self.userData = fixture.userData
+        #self.point = fixture.body.position
+        #print(self.userData)
+        return fraction
 
 class ICRAContactListener(contactListener):
     def __init__(self, env):
@@ -51,9 +70,9 @@ class ICRAContactListener(contactListener):
     def PreSolve(self, contact, oldManifold):
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
+        #print(u1, u2)
         if type(u1) != str or type(u2) != str:
             return
-        #print(u1, u2)
         u1_type = u1.split("_")[0]
         u2_type = u2.split("_")[0]
         if u1_type == "bullet" and u2_type == "robot":
@@ -98,9 +117,11 @@ class CarRacing(gym.Env, EzPickle):
         self.map = None
         self.buff_areas = None
         self.bullets = None
+        self.detect_callback = None
+        self.detect_callback = detectCallback()
+
         self.reward = 0.0
         self.prev_reward = 0.0
-
         self.action_space = spaces.Box(np.array([-1, -1, 0, -1]),
                                        np.array([+1, +1, +1, +1]), dtype=np.float32)
         # transverse, gas, shoot, move head
@@ -138,6 +159,7 @@ class CarRacing(gym.Env, EzPickle):
         return self.step(None)[0]
 
     def step(self, action):
+
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
         collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
@@ -150,15 +172,34 @@ class CarRacing(gym.Env, EzPickle):
             self.robots[robot].loseHealth(10)
         self.contactListener_keepref.clean()
 
-        self.contactListener_keepref.collision_bullet_robot = []
         if action is not None:
             self.robots["robot_0"].moveTransverse(-action[0])
             self.robots["robot_0"].moveAheadBack(action[1])
             self.robots["robot_0"].rotateCloudTerrance(action[3])
             self.robots["robot_0"].turnLeftRight(action[4])
             if action[2] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-                init_angle, init_pos = self.robots["robot_0"].getAnglePos()
+                init_angle, init_pos = self.robots["robot_0"].getGunAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
+
+        detected = []
+        for i in range(-10, 10):
+            scan_range = 5
+            angle, pos = self.robots["robot_0"].getGunAnglePos()
+            angle += math.pi / 2 + i/180*math.pi
+            p1 = (pos[0] + 0.5*math.cos(angle), pos[1] + 0.5*math.sin(angle))
+            p2 = (pos[0] + scan_range*math.cos(angle), pos[1] + scan_range*math.sin(angle))
+            self.world.RayCast(self.detect_callback, p1, p2)
+            u = self.detect_callback.userData
+            if u in self.robots.keys():
+                #target = self.detect_callback.point
+                #target_angle = math.atan2(target[1], target[0])
+                #print("angle: {}, target angle: {}".format(angle, target_angle))
+                #self.robots["robot_0"].setCloudTerrance(angle-math.pi/2)
+                detected.append(angle)
+                #break
+        if detected:
+            angle = sum(detected) / len(detected)
+            self.robots["robot_0"].setCloudTerrance(angle-math.pi/2)
 
         for robot_name in self.robots.keys():
             self.robots[robot_name].step(1.0/FPS)
@@ -175,7 +216,7 @@ class CarRacing(gym.Env, EzPickle):
             self.reward -= 0.1
             step_reward = self.reward - self.prev_reward
             self.prev_reward = self.reward
-            x, y = self.robots[robot_name].hull.position
+            x, y = self.robots["robot_0"].hull.position
             if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
                 step_reward = -100
