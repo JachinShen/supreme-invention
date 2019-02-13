@@ -46,6 +46,7 @@ class Bullet:
             self.world.DestroyBody(body)
 
     def destroy(self):
-        for bullet in self.bullets.items():
+        for bullet in self.bullets.values():
             self.world.DestroyBody(bullet)
+        self.bullets = {}
     

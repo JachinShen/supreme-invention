@@ -54,7 +54,7 @@ class Robot:
                 angle = 0,
                 fixtures = fixtureDef(
                     shape=polygonShape(vertices=[ (x*front_k*SIZE,y*front_k*SIZE) for x,y in WHEEL_POLY ]),
-                    density=0.1, restitution=1, userData=userData)
+                    density=0.1, restitution=1, userData=userData+"_wheel")
                     )
             rjd = revoluteJointDef(
                 bodyA=self.hull,
@@ -108,6 +108,12 @@ class Robot:
     def getGunAnglePos(self):
         return self.gun.angle+math.pi/2, self.gun.position
     
+    def getPos(self):
+        return self.hull.position
+
+    def getAngle(self):
+        return self.hull.angle
+    
     def rotateCloudTerrance(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
 
@@ -144,7 +150,7 @@ class Robot:
         torque = - self.hull.angularVelocity*0.001 + self.command["rotate"] * 0.005
         self.hull.ApplyAngularImpulse(torque, True)
 
-    def draw(self, viewer, draw_particles=True):
+    def draw(self, viewer):
         for obj in self.drawlist:
             for f in obj.fixtures:
                 trans = f.body.transform

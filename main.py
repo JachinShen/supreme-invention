@@ -57,11 +57,15 @@ class ICRAField(gym.Env, EzPickle):
 
         self.reward = 0.0
         self.prev_reward = 0.0
-        self.action_space = spaces.Box(np.array([-1, -1, 0, -1]),
-                                       np.array([+1, +1, +1, +1]), dtype=np.float32)
-        # transverse, gas, shoot, move head
-        self.observation_space = spaces.Box(
-            low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
+        # gas, rotate, transverse, rotate cloud terrance, shoot
+        #self.action_space = spaces.Box(
+            #np.array([-1, -1, -1, -1, 0]),
+            #np.array([+1, -1, +1, +1, +1]), dtype=np.float32)
+        # pos(x,y) x2, health
+        #self.observation_space = spaces.Box(
+            #np.array([-1, -1, -1, -1, -1]),
+            #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
+        self.state = {"pos": (-1,-1), "angle": -1, "robot_1": (-1,-1), "health":-1}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -86,7 +90,7 @@ class ICRAField(gym.Env, EzPickle):
         self.human_render = False
 
         self.robots = {}
-        for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 3.5]):
+        for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
             self.robots[robot_name] = Robot(
                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
@@ -109,17 +113,18 @@ class ICRAField(gym.Env, EzPickle):
         self.contactListener_keepref.clean()
 
     def action_step(self, robot_name, action):
-        self.robots[robot_name].moveTransverse(-action[0])
-        self.robots[robot_name].moveAheadBack(action[1])
-        if action[2] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+        # gas, rotate, transverse, rotate cloud terrance, shoot
+        self.robots[robot_name].moveAheadBack(action[0])
+        self.robots[robot_name].turnLeftRight(action[1]/2)
+        self.robots[robot_name].moveTransverse(action[2])
+        self.robots[robot_name].rotateCloudTerrance(action[3])
+        if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
             init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
             self.bullets.shoot(init_angle, init_pos)
-        self.robots[robot_name].rotateCloudTerrance(action[3])
-        self.robots[robot_name].turnLeftRight(action[4])
 
     def detect_step(self):
-        detected = []
-        for i in range(-10, 10):
+        detected = {}
+        for i in range(-15, 15):
             angle, pos = self.robots["robot_0"].getGunAnglePos()
             angle += i/180*math.pi
             p1 = (pos[0] + 0.5*math.cos(angle), pos[1] + 0.5*math.sin(angle))
@@ -127,15 +132,19 @@ class ICRAField(gym.Env, EzPickle):
             self.world.RayCast(self.detect_callback, p1, p2)
             u = self.detect_callback.userData
             if u in self.robots.keys():
-                #target = self.detect_callback.point
-                #target_angle = math.atan2(target[1], target[0])
-                #print("angle: {}, target angle: {}".format(angle, target_angle))
-                #self.robots["robot_0"].setCloudTerrance(angle-math.pi/2)
-                detected.append(angle)
-                #break
-        if detected:
-            angle = sum(detected) / len(detected)
-            self.robots["robot_0"].setCloudTerrance(angle)
+                if u not in detected.keys():
+                    p = detected[u] = self.detect_callback.point
+                    pos = self.robots["robot_0"].getPos()
+                    p = (p[0] - pos[0], p[1] - pos[1])
+                    angle = math.atan2(p[1], p[0])
+                    self.robots["robot_0"].setCloudTerrance(angle)
+
+
+        for robot_name in self.robots.keys():
+            if robot_name in detected.keys():
+                self.state[robot_name] = detected[robot_name]
+            else:
+                self.state[robot_name] = (-1, -1)
 
     def step(self, action):
         self.collision_step()
@@ -150,18 +159,22 @@ class ICRAField(gym.Env, EzPickle):
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state = self.render("state_pixels")
+        self.state["health"] = self.robots["robot_0"].health
+        self.state["pos"] = self.robots["robot_0"].getPos()
+        self.state["angle"] = self.robots["robot_0"].getAngle()
 
         step_reward = 0
         done = False
         if action is not None:  # First step without action, called from reset()
             self.reward -= 0.1
             step_reward = self.reward - self.prev_reward
-            self.prev_reward = self.reward
-            x, y = self.robots["robot_0"].hull.position
-            if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+            if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward = -100
+                step_reward -= 1000
+            if self.robots["robot_1"].health <= 0:
+                done = True
+                step_reward += 1000
+            self.prev_reward = self.reward
 
         return self.state, step_reward, done, {}
 
@@ -201,7 +214,7 @@ class ICRAField(gym.Env, EzPickle):
 
         self.map.draw(self.viewer)
         for robot_name in self.robots.keys():
-            self.robots[robot_name].draw(self.viewer, mode != "state_pixels")
+            self.robots[robot_name].draw(self.viewer)
         self.bullets.draw(self.viewer)
 
         arr = None
@@ -264,36 +277,52 @@ class ICRAField(gym.Env, EzPickle):
         self.score_label.draw()
         self.health_label.draw()
 
+class NaiveAgent():
+    def __init__(self):
+        pass
+
+    def run(self, observation, action):
+        pos = observation["pos"]
+        angle = observation["angle"]
+        robot_1 = observation["robot_1"]
+        if robot_1[0] > 0 and robot_1[1] > 0:
+            action[4] = +1.0
+        else:
+            action[4] = +0.0
+        return action
+
 
 if __name__ == "__main__":
     from pyglet.window import key
-    # action[7] for steer, gas, shoot, move head, rotation
+    # gas, rotate, transverse, rotate cloud terrance, shoot
     a = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 
     def key_press(k, mod):
         global restart
-        if k == 0xff0d: restart = True
-        if k == key.A: a[0] = +1.0
-        if k == key.D: a[0] = -1.0
-        if k == key.W: a[1] = +1.0
-        if k == key.S: a[1] = -1.0
-        if k == key.SPACE: a[2] = +1.0
-        if k == key.Q: a[4] = +0.5
-        if k == key.E: a[4] = -0.5
-        if k == key.Z: a[3] = +2
-        if k == key.C: a[3] = -2
+        if k == key.ESCAPE: restart = True
+        if k == key.W: a[0] = +1.0
+        if k == key.S: a[0] = -1.0
+        if k == key.Q: a[1] = +1.0
+        if k == key.E: a[1] = -1.0
+        if k == key.D: a[2] = +1.0
+        if k == key.A: a[2] = -1.0
+        if k == key.Z: a[3] = +1.0
+        if k == key.C: a[3] = -1.0
+        if k == key.SPACE: a[4] = +1.0
 
     def key_release(k, mod):
-        if k == key.A: a[0] = 0
-        if k == key.D: a[0] = 0
-        if k == key.W: a[1] = 0
-        if k == key.S: a[1] = 0
-        if k == key.SPACE: a[2] = 0
-        if k == key.Q: a[4] = 0
-        if k == key.E: a[4] = 0
-        if k == key.Z: a[3] = 0
-        if k == key.C: a[3] = 0
+        if k == key.ESCAPE: restart = True
+        if k == key.W: a[0] = +0.0
+        if k == key.S: a[0] = -0.0
+        if k == key.Q: a[1] = +0.0
+        if k == key.E: a[1] = -0.0
+        if k == key.D: a[2] = +0.0
+        if k == key.A: a[2] = -0.0
+        if k == key.Z: a[3] = +0.0
+        if k == key.C: a[3] = -0.0
+        if k == key.SPACE: a[4] = +0.0
 
+    agent = NaiveAgent()
     env = ICRAField()
     env.render()
     record_video = False
@@ -308,9 +337,11 @@ if __name__ == "__main__":
         restart = False
         while True:
             s, r, done, info = env.step(a)
+            a = agent.run(s, a)
             total_reward += r
             if steps % 200 == 0 or done:
-                print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
+                print("state: {}".format(s))
+                print("action " + str(["{:+0.2f}".format(x) for x in a]))
                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
                 #import matplotlib.pyplot as plt
                 # plt.imshow(s)

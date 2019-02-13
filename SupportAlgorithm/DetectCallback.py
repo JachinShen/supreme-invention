@@ -15,6 +15,6 @@ class detectCallback(b2RayCastCallback):
     # clipping.
     def ReportFixture(self, fixture, point, normal, fraction):
         self.userData = fixture.userData
-        #self.point = fixture.body.position
+        self.point = fixture.body.position
         #print(self.userData)
         return fraction
