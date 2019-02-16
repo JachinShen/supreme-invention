@@ -14,10 +14,10 @@ class Bullet:
         self.ctr = 1
 
     def shoot(self, init_angle, init_pos):
-        angle = init_angle + math.pi/2
+        angle = init_angle
         x, y = init_pos
-        x += math.cos(angle) * 0.2
-        y += math.sin(angle) * 0.2
+        x += math.cos(angle) * 0.3
+        y += math.sin(angle) * 0.3
         bullet = self.world.CreateDynamicBody(
             position = (x, y),
             angle = angle,
@@ -46,6 +46,7 @@ class Bullet:
             self.world.DestroyBody(body)
 
     def destroy(self):
-        for bullet in self.bullets.items():
+        for bullet in self.bullets.values():
             self.world.DestroyBody(bullet)
+        self.bullets = {}
     
