@@ -119,8 +119,10 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
         if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-            init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
-            self.bullets.shoot(init_angle, init_pos)
+            if(self.robots[robot_name].bullets_num > 0):
+                init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
+                self.bullets.shoot(init_angle, init_pos)
+                self.robots[robot_name].bullets_num -= 1
 
     def detect_step(self):
         detected = {}
@@ -188,6 +190,9 @@ class ICRAField(gym.Env, EzPickle):
             self.health_label = pyglet.text.Label('0000', font_size=16,
                                                   x=520, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                                                   color=(255, 255, 255, 255))
+            self.bullets_label = pyglet.text.Label('0000', font_size=16,
+                                                   x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
+                                                   color=(255, 255, 255, 255))
             self.transform = rendering.Transform()
 
         if "t" not in self.__dict__:
@@ -274,8 +279,12 @@ class ICRAField(gym.Env, EzPickle):
         self.score_label.text = "%04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.robots["robot_0"].health, self.robots["robot_1"].health)
+        self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
+            self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
+        )
         self.score_label.draw()
         self.health_label.draw()
+        self.bullets_label.draw()
 
 class NaiveAgent():
     def __init__(self):
@@ -339,10 +348,10 @@ if __name__ == "__main__":
             s, r, done, info = env.step(a)
             a = agent.run(s, a)
             total_reward += r
-            if steps % 200 == 0 or done:
-                print("state: {}".format(s))
-                print("action " + str(["{:+0.2f}".format(x) for x in a]))
-                print("step {} total_reward {:+0.2f}".format(steps, total_reward))
+            # if steps % 200 == 0 or done:
+            #     print("state: {}".format(s))
+            #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
+            #     print("step {} total_reward {:+0.2f}".format(steps, total_reward))
                 #import matplotlib.pyplot as plt
                 # plt.imshow(s)
                 # plt.savefig("test.jpeg")

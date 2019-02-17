@@ -1,4 +1,4 @@
-BUFFAREABOX_RED = (0.0, 3.0, 2.0, 2.0) #(x, y, w, h)
+BUFFAREABOX_RED = (3.0, 3.0, 2.0, 2.0) #(x, y, w, h)
 BUFFAREABOX_BLUE = (5.0, 1.0, 1.0, 1.0)
 
 COLOR_RED = (1.0, 0, 0, 1.0)
@@ -63,7 +63,7 @@ class BuffArea(object):
     def isLocated(self, point, box):
         px, py = point
         bx, by, w, h = box
-        if(px >= bx and px <= bx + w and py >= bx and py <= by + h):
+        if(px >= bx and px <= bx + w and py >= by and py <= by + h):
             return True
         else:
             return False
