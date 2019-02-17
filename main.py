@@ -152,7 +152,7 @@ class ICRAField(gym.Env, EzPickle):
             self.action_step("robot_0", action)
 
         self.detect_step()
-        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]])
+        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
 
         for robot_name in self.robots.keys():
             self.robots[robot_name].step(1.0/FPS)
