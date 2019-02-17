@@ -33,6 +33,13 @@ WHEEL_COLOR = (0.0,0.0,0.0)
 
 GUN_BOX = (20*SIZE, 130*SIZE)
 
+BULLETS_ADDED_ONE_TIME = 50
+
+SUPPLY_AREAS = {
+    'red': (3.0, 3.0, 2.0, 2.0), #(x, y, w, h)
+    'blue': (5.0, 1.0, 1.0, 1.0)
+}
+
 class Robot:
     def __init__(self, world, init_angle, init_x, init_y, userData, robot_id, group='red'):
         self.world = world
@@ -104,6 +111,29 @@ class Robot:
         self.health = 1000.0
         self.buffLeftTime = 0
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
+
+        self.bullets_num = 0
+        self.opportuniy_to_add_bullets = 2
+
+    def addBullets(self):
+        if(self.opportuniy_to_add_bullets <= 0):
+            return
+        self.opportuniy_to_add_bullets -= 1
+        if(self.isInSupplyArea()):
+            self.bullets_num += BULLETS_ADDED_ONE_TIME
+
+    def isInSupplyArea(self):
+        #TODO(zhouyiyuan): define the supply area and implement this function
+        #return True
+        if(self.group not in SUPPLY_AREAS.keys()):
+            return False
+        supply_area = SUPPLY_AREAS[self.group]
+        x_robot, y_robot = self.hull.position.x, self.hull.position.y
+        bx, by, w, h = supply_area
+        if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
+            return True
+        else:
+            return False
 
     def getGunAnglePos(self):
         return self.gun.angle+math.pi/2, self.gun.position

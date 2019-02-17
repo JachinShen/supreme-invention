@@ -1,29 +1,29 @@
-BUFFAREABOX_RED = (0.0, 3.0, 2.0, 2.0) #(x, y, w, h)
+BUFFAREABOX_RED = (3.0, 3.0, 2.0, 2.0) #(x, y, w, h)
 BUFFAREABOX_BLUE = (5.0, 1.0, 1.0, 1.0)
 
 COLOR_RED = (1.0, 0, 0, 1.0)
 COLOR_BLUE = (0, 0, 1.0, 1.0)
 
-import time
-
 
 class AllBuffArea(object):
     def __init__(self):
+        #Time that a robot needs to stay in a buff area to activate defentive buff
         self.triggerTime = 5
+        #Time of defentive buff
         self.maxBuffLeftTime = 10
         self.buffAreas = [BuffArea(BUFFAREABOX_RED, 'red', COLOR_RED, self.maxBuffLeftTime, self.triggerTime),
                           BuffArea(BUFFAREABOX_BLUE, 'blue', COLOR_BLUE, self.maxBuffLeftTime, self.triggerTime)]
-        self.preTime = time.time()
+        self.preTime = 0.0
 
-    def detect(self, robots):
+    def detect(self, robots, curTime):
         for robot in robots:
             if(robot.buffLeftTime > 0):
-                robot.buffLeftTime -= time.time() - self.preTime
+                robot.buffLeftTime -= curTime - self.preTime
             robot.buffLeftTime = max(0, robot.buffLeftTime)
             # print(car.car_id, car.buffLeftTime)
         for buff in self.buffAreas:
-            buff.detect(robots)
-        self.preTime = time.time()
+            buff.detect(robots, curTime)
+        self.preTime = curTime
 
     def render(self, gl):
         for buff in self.buffAreas:
@@ -37,19 +37,19 @@ class BuffArea(object):
         self.color  = color
         self.maxBuffLeftTime = maxBuffLeftTime
         self.triggerTime = triggerTime
-        self.preTime = time.time()
+        self.preTime = 0.0
 
-    def detect(self, objects):
+    def detect(self, objects, curTime):
         for car in objects:
             if(car.buffLeftTime > 0):
                 continue
             if(self.cover(car)):
                 if(car.robot_id not in self.stayTime.keys()):
                     self.stayTime[car.robot_id] = 0
-                self.stayTime[car.robot_id] += time.time() - self.preTime
+                self.stayTime[car.robot_id] += curTime - self.preTime
             else:
                 self.stayTime[car.robot_id] = 0
-        self.preTime = time.time()
+        self.preTime = curTime
 
         if self.stayTime and (max(self.stayTime.values())) >= self.triggerTime:
             self.stayTime = {}
@@ -63,7 +63,7 @@ class BuffArea(object):
     def isLocated(self, point, box):
         px, py = point
         bx, by, w, h = box
-        if(px >= bx and px <= bx + w and py >= bx and py <= by + h):
+        if(px >= bx and px <= bx + w and py >= by and py <= by + h):
             return True
         else:
             return False
