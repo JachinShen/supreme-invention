@@ -92,7 +92,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
         for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
             self.robots[robot_name] = Robot(
-                self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+                # self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+                self.world, 0 , x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
@@ -118,6 +119,9 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
+        if action[5] > 0.99:
+            self.robots[robot_name].addBullets()
+            action[5] = +0.0
         if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
             if(self.robots[robot_name].bullets_num > 0):
                 init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
@@ -126,6 +130,7 @@ class ICRAField(gym.Env, EzPickle):
 
     def detect_step(self):
         detected = {}
+        # self.robots["robot_0"].setCloudTerrance(1)
         for i in range(-15, 15):
             angle, pos = self.robots["robot_0"].getGunAnglePos()
             angle += i/180*math.pi
@@ -303,8 +308,8 @@ class NaiveAgent():
 
 if __name__ == "__main__":
     from pyglet.window import key
-    # gas, rotate, transverse, rotate cloud terrance, shoot
-    a = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+    # gas, rotate, transverse, rotate cloud terrance, shoot, reload
+    a = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     def key_press(k, mod):
         global restart
@@ -318,6 +323,7 @@ if __name__ == "__main__":
         if k == key.Z: a[3] = +1.0
         if k == key.C: a[3] = -1.0
         if k == key.SPACE: a[4] = +1.0
+        if k == key.R: a[5] = +1.0
 
     def key_release(k, mod):
         if k == key.ESCAPE: restart = True
@@ -330,6 +336,7 @@ if __name__ == "__main__":
         if k == key.Z: a[3] = +0.0
         if k == key.C: a[3] = -0.0
         if k == key.SPACE: a[4] = +0.0
+        if k == key.R: a[5] = +0.0
 
     agent = NaiveAgent()
     env = ICRAField()
