@@ -115,6 +115,9 @@ class Robot:
         self.bullets_num = 40
         self.opportuniy_to_add_bullets = 2
 
+    def refreshReloadOppotunity(self):
+        self.opportuniy_to_add_bullets = 2
+
     def addBullets(self):
         if(self.opportuniy_to_add_bullets <= 0):
             return

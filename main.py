@@ -119,6 +119,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
+        if int(self.t * FPS) % FPS == 1:
+            self.robots[robot_name].refreshReloadOppotunity()
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
             action[5] = +0.0
