@@ -92,8 +92,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
         for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
             self.robots[robot_name] = Robot(
-                # self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
-                self.world, 0 , x, 4.5, robot_name, 0, 'red')
+                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+                # self.world, 0 , x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
@@ -119,6 +119,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
+        if int(self.t * FPS) % FPS == 1:
+            self.robots[robot_name].refreshReloadOppotunity()
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
             action[5] = +0.0
