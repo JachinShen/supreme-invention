@@ -1,8 +1,10 @@
-BUFFAREABOX_RED = (3.0, 3.0, 2.0, 2.0) #(x, y, w, h)
-BUFFAREABOX_BLUE = (5.0, 1.0, 1.0, 1.0)
+BUFFAREABOX_RED = (5.8, 1.25, 1.0, 1.0) #(x, y, w, h)
+BUFFAREABOX_BLUE = (1.2, 2.75, 1.0, 1.0)
 
 COLOR_RED = (1.0, 0, 0, 1.0)
 COLOR_BLUE = (0, 0, 1.0, 1.0)
+
+FPS = 30
 
 
 class AllBuffArea(object):
@@ -10,7 +12,7 @@ class AllBuffArea(object):
         #Time that a robot needs to stay in a buff area to activate defentive buff
         self.triggerTime = 5
         #Time of defentive buff
-        self.maxBuffLeftTime = 10
+        self.maxBuffLeftTime = 30
         self.buffAreas = [BuffArea(BUFFAREABOX_RED, 'red', COLOR_RED, self.maxBuffLeftTime, self.triggerTime),
                           BuffArea(BUFFAREABOX_BLUE, 'blue', COLOR_BLUE, self.maxBuffLeftTime, self.triggerTime)]
         self.preTime = 0.0
@@ -33,31 +35,42 @@ class BuffArea(object):
     def __init__(self, box, group, color, maxBuffLeftTime, triggerTime):
         self.box = box
         self.stayTime = {}
+        self.maxStayTime = 0.0
         self.group = group
         self.color  = color
         self.maxBuffLeftTime = maxBuffLeftTime
         self.triggerTime = triggerTime
         self.preTime = 0.0
+        self.activated = False # True: The buff area has been activated and keep invalid until next minute
 
     def detect(self, objects, curTime):
-        for car in objects:
-            if(car.buffLeftTime > 0):
-                continue
-            if(self.cover(car)):
-                if(car.robot_id not in self.stayTime.keys()):
-                    self.stayTime[car.robot_id] = 0
-                self.stayTime[car.robot_id] += curTime - self.preTime
-            else:
-                self.stayTime[car.robot_id] = 0
+        #0, 1, 2min refresh
+        if(int(curTime * FPS) % (60 * FPS) == 0):
+            self.activated = False
+            self.stayTime = {}
+
+        if(not self.activated):
+            for car in objects:
+                if(self.cover(car)):
+                    if(car.hull.userData not in self.stayTime.keys()):
+                        self.stayTime[car.hull.userData] = 0
+                    self.stayTime[car.hull.userData] += curTime - self.preTime
+                else:
+                    self.stayTime[car.hull.userData] = 0
         self.preTime = curTime
 
-        if self.stayTime and (max(self.stayTime.values())) >= self.triggerTime:
+        self.maxStayTime = max(self.stayTime.values()) if self.stayTime else 0
+        if self.stayTime and self.maxStayTime >= self.triggerTime:
             self.stayTime = {}
+            self.maxStayTime = 0.0
+            self.activated = True
             for car in objects:
                 if(car.group == self.group):
                     car.buffLeftTime = self.maxBuffLeftTime
 
     def cover(self, robot):
+        # print('location:{}, {}'.format(robot.hull.position.x, robot.hull.position.y))
+        # print(self.box, self.isLocated((robot.hull.position.x, robot.hull.position.y), self.box))
         return self.isLocated((robot.hull.position.x, robot.hull.position.y), self.box)
 
     def isLocated(self, point, box):
@@ -67,8 +80,6 @@ class BuffArea(object):
             return True
         else:
             return False
-
-
 
     def render(self, gl):
         gl.glBegin(gl.GL_QUADS)

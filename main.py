@@ -15,6 +15,7 @@ from Objects.Robot import Robot
 from Objects.Bullet import Bullet
 from Referee.ICRAMap import ICRAMap
 from Referee.BuffArea import AllBuffArea
+from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
 
@@ -53,6 +54,7 @@ class ICRAField(gym.Env, EzPickle):
         self.map = None
         self.buff_areas = None
         self.bullets = None
+        self.supply_areas = None
         self.detect_callback = detectCallback()
 
         self.reward = 0.0
@@ -90,13 +92,20 @@ class ICRAField(gym.Env, EzPickle):
         self.human_render = False
 
         self.robots = {}
-        for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
-            self.robots[robot_name] = Robot(
-                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
-                # self.world, 0 , x, 4.5, robot_name, 0, 'red')
+
+
+        # for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
+        #     self.robots[robot_name] = Robot(
+        #          self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+        red_color = (0.8,0.0,0.0)
+        blue_color = (0.0, 0.0, 0.8)
+        self.robots['robot_0'] = Robot(self.world, -np.pi/2, 0.5, 4.5, 'robot_0', 0, 'red', red_color)
+        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 6.5, 4.5, 'robot_1', 1, 'blue', blue_color)
+
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
+        self.supply_areas = SupplyAreas()
 
         return self.step(None)[0]
 
@@ -119,7 +128,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
-        if int(self.t * FPS) % FPS == 1:
+        #print(int(self.t * FPS) % (60 * FPS))
+        if int(self.t * FPS) % (60 * FPS) == 0:
             self.robots[robot_name].refreshReloadOppotunity()
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
@@ -191,6 +201,9 @@ class ICRAField(gym.Env, EzPickle):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
+            self.time_label = pyglet.text.Label('0000', font_size=36,
+                                                 x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
+                                                 color=(255, 255, 255, 255))
             self.score_label = pyglet.text.Label('0000', font_size=36,
                                                  x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                                                  color=(255, 255, 255, 255))
@@ -200,6 +213,12 @@ class ICRAField(gym.Env, EzPickle):
             self.bullets_label = pyglet.text.Label('0000', font_size=16,
                                                    x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
                                                    color=(255, 255, 255, 255))
+            self.buff_stay_time = pyglet.text.Label('0000', font_size=16,
+                                                   x=520, y=WINDOW_H*4.5/40.00, anchor_x='left', anchor_y='center',
+                                                   color=(255, 255, 255, 255))
+            self.buff_left_time = pyglet.text.Label('0000', font_size=16,
+                                                    x=520, y=WINDOW_H * 5.5 / 40.00, anchor_x='left', anchor_y='center',
+                                                    color=(255, 255, 255, 255))
             self.transform = rendering.Transform()
 
         if "t" not in self.__dict__:
@@ -273,6 +292,7 @@ class ICRAField(gym.Env, EzPickle):
                 gl.glVertex3f(k*x + k, k*y + k, 0)
         gl.glEnd()
         self.buff_areas.render(gl)
+        self.supply_areas.render(gl)
 
         # self.render_buff_area(self.map.buff_area)
 
@@ -283,15 +303,23 @@ class ICRAField(gym.Env, EzPickle):
     #         pass
 
     def render_indicators(self, W, H):
-        self.score_label.text = "%04i" % self.reward
+        self.time_label.text = "Time: {} s".format(int(self.t))
+        self.score_label.text = "Score: %04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.robots["robot_0"].health, self.robots["robot_1"].health)
         self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
             self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
         )
+        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.buff_areas.buffAreas[0].maxStayTime),
+                                                                    int(self.buff_areas.buffAreas[1].maxStayTime))
+        self.buff_left_time.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.robots['robot_0'].buffLeftTime),
+                                                                         int(self.robots['robot_1'].buffLeftTime))
+        self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
         self.bullets_label.draw()
+        self.buff_stay_time.draw()
+        self.buff_left_time.draw()
 
 class NaiveAgent():
     def __init__(self):
