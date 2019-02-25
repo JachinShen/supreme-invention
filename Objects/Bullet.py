@@ -14,17 +14,17 @@ class Bullet:
         self.ctr = 1
 
     def shoot(self, init_angle, init_pos):
-        angle = init_angle + math.pi/2
+        angle = init_angle
         x, y = init_pos
-        x += math.cos(angle) * 0.2
-        y += math.sin(angle) * 0.2
+        x += math.cos(angle) * 0.3
+        y += math.sin(angle) * 0.3
         bullet = self.world.CreateDynamicBody(
             position = (x, y),
             angle = angle,
             fixtures = [
                 fixtureDef(
                     shape = polygonShape(box=BULLET_BOX), 
-                    density=1.0)
+                    density=0.1)
             ]
         )
         bullet.color = (0.0, 0.0, 0.0)
@@ -40,13 +40,13 @@ class Bullet:
                 path = [trans*v for v in f.shape.vertices]
                 viewer.draw_polygon(path, color=obj.color)
 
-    def destroyContacted(self, nuke):
-        for u in nuke:
-            body = self.bullets.pop(u, "repeated")
-            if body != "repeated":
-                self.world.DestroyBody(body)
+    def destroyById(self, bullet_id):
+        body = self.bullets.pop(bullet_id, "repeated")
+        if body != "repeated":
+            self.world.DestroyBody(body)
 
     def destroy(self):
-        for bullet in self.bullets.items():
+        for bullet in self.bullets.values():
             self.world.DestroyBody(bullet)
+        self.bullets = {}
     

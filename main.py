@@ -1,20 +1,22 @@
-import sys, math
+import sys
+import math
 import numpy as np
 
 import Box2D
-from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener)
 
 import gym
 from gym import spaces
-#from gym.envs.box2d.car_dynamics import Car
 from gym.utils import colorize, seeding, EzPickle
 
 import pyglet
 from pyglet import gl
 
-from Robot import Car
-from ICRAMap import ICRAMap
-from Bullet import Bullet
+from Objects.Robot import Robot
+from Objects.Bullet import Bullet
+from Referee.ICRAMap import ICRAMap
+from Referee.BuffArea import AllBuffArea
+from Referee.ICRAContactListener import ICRAContactListener
+from SupportAlgorithm.DetectCallback import detectCallback
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -23,73 +25,62 @@ VIDEO_H = 400
 WINDOW_W = 1200
 WINDOW_H = 1000
 
-SCALE       = 40.0        # Track scale
-TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD   = 400/SCALE # Game over boundary
-FPS         = 30
-ZOOM        = 2.7        # Camera zoom
+SCALE = 40.0        # Track scale
+PLAYFIELD = 400/SCALE  # Game over boundary
+FPS = 30
+ZOOM = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
-class ICRAContactListener(contactListener):
-    def __init__(self, env):
-        contactListener.__init__(self)
-        self.env = env
-        self.nuke = []
-    def BeginContact(self, contact):
-        pass
-    def EndContact(self, contact):
-        pass
-    def PreSolve(self, contact, oldManifold):
-        u1 = contact.fixtureA.body.userData
-        u2 = contact.fixtureB.body.userData
-        if type(u1) != str or type(u2) != str:
-            return
-        #print(u1, u2)
-        if u1.split("_")[0] == "bullet":
-            self.nuke.append(u1)
-        if u2.split("_")[0] == "bullet":
-            self.nuke.append(u2)
-        
-    def PostSolve(self, contact, impulse):
-        pass
+SCAN_RANGE = 5
 
-class CarRacing(gym.Env, EzPickle):
+class ICRAField(gym.Env, EzPickle):
     metadata = {
-        'render.modes': ['human', 'rgb_array', 'state_pixels'],
-        'video.frames_per_second' : FPS
+        #'render.modes': ['human', 'rgb_array', 'state_pixels'],
+        'render.modes': 'human',
+        'video.frames_per_second': FPS
     }
 
     def __init__(self):
         EzPickle.__init__(self)
         self.seed()
         self.contactListener_keepref = ICRAContactListener(self)
-        self.world = Box2D.b2World((0,0), contactListener=self.contactListener_keepref)
-        #self.world = Box2D.b2World((0,0), )
+        self.world = Box2D.b2World(
+            (0, 0), contactListener=self.contactListener_keepref)
         self.viewer = None
         self.invisible_state_window = None
         self.invisible_video_window = None
-        self.road = None
-        self.car = None
+        self.robots = {}
         self.map = None
+        self.buff_areas = None
         self.bullets = None
+        self.detect_callback = detectCallback()
+
         self.reward = 0.0
         self.prev_reward = 0.0
-
-        self.action_space = spaces.Box( np.array([-1,0,0,0]), np.array([+1,+1,+1,+1]), dtype=np.float32)  # steer, gas, brake, shoot
-        self.observation_space = spaces.Box(low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
-
+        # gas, rotate, transverse, rotate cloud terrance, shoot
+        #self.action_space = spaces.Box(
+            #np.array([-1, -1, -1, -1, 0]),
+            #np.array([+1, -1, +1, +1, +1]), dtype=np.float32)
+        # pos(x,y) x2, health
+        #self.observation_space = spaces.Box(
+            #np.array([-1, -1, -1, -1, -1]),
+            #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
+        self.state = {"pos": (-1,-1), "angle": -1, "robot_1": (-1,-1), "health":-1}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def _destroy(self):
-        if self.car:
-            self.car.destroy()
+        for robot_name in self.robots.keys():
+            self.robots[robot_name].destroy()
+        self.robots = {}
         if self.map:
             self.map.destroy()
+        self.map = None
         if self.bullets:
             self.bullets.destroy()
+        self.bullets = None
 
     def reset(self):
         self._destroy()
@@ -98,44 +89,101 @@ class CarRacing(gym.Env, EzPickle):
         self.t = 0.0
         self.human_render = False
 
-        self.car = Car(self.world, -np.pi/2, 0.5, 4.5)
+        self.robots = {}
+        for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
+            self.robots[robot_name] = Robot(
+                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+                # self.world, 0 , x, 4.5, robot_name, 0, 'red')
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
+        self.buff_areas = AllBuffArea()
 
         return self.step(None)[0]
 
-    def step(self, action):
-        nuke = self.contactListener_keepref.nuke
-        if len(nuke) > 0:
-            self.bullets.destroyContacted(nuke)
-            self.contactListener_keepref.nuke = []
-        if action is not None:
-            self.car.steer(-action[0])
-            self.car.gas(action[1])
-            self.car.brake(action[2])
-            if action[3] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-                init_angle, init_pos = self.car.getAnglePos()
-                self.bullets.shoot(init_angle, init_pos)
+    def collision_step(self):
+        collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
+        collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
+        collision_robot_wall = self.contactListener_keepref.collision_robot_wall
+        for bullet, robot in collision_bullet_robot:
+            self.bullets.destroyById(bullet)
+            self.robots[robot].loseHealth(50)
+        for bullet in collision_bullet_wall:
+            self.bullets.destroyById(bullet)
+        for robot in collision_robot_wall:
+            self.robots[robot].loseHealth(10)
+        self.contactListener_keepref.clean()
 
-        self.car.step(1.0/FPS)
+    def action_step(self, robot_name, action):
+        # gas, rotate, transverse, rotate cloud terrance, shoot
+        self.robots[robot_name].moveAheadBack(action[0])
+        self.robots[robot_name].turnLeftRight(action[1]/2)
+        self.robots[robot_name].moveTransverse(action[2])
+        self.robots[robot_name].rotateCloudTerrance(action[3])
+        if int(self.t * FPS) % FPS == 1:
+            self.robots[robot_name].refreshReloadOppotunity()
+        if action[5] > 0.99:
+            self.robots[robot_name].addBullets()
+            action[5] = +0.0
+        if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+            if(self.robots[robot_name].bullets_num > 0):
+                init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
+                self.bullets.shoot(init_angle, init_pos)
+                self.robots[robot_name].bullets_num -= 1
+
+    def detect_step(self):
+        detected = {}
+        # self.robots["robot_0"].setCloudTerrance(1)
+        for i in range(-15, 15):
+            angle, pos = self.robots["robot_0"].getGunAnglePos()
+            angle += i/180*math.pi
+            p1 = (pos[0] + 0.5*math.cos(angle), pos[1] + 0.5*math.sin(angle))
+            p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
+            self.world.RayCast(self.detect_callback, p1, p2)
+            u = self.detect_callback.userData
+            if u in self.robots.keys():
+                if u not in detected.keys():
+                    p = detected[u] = self.detect_callback.point
+                    pos = self.robots["robot_0"].getPos()
+                    p = (p[0] - pos[0], p[1] - pos[1])
+                    angle = math.atan2(p[1], p[0])
+                    self.robots["robot_0"].setCloudTerrance(angle)
+
+
+        for robot_name in self.robots.keys():
+            if robot_name in detected.keys():
+                self.state[robot_name] = detected[robot_name]
+            else:
+                self.state[robot_name] = (-1, -1)
+
+    def step(self, action):
+        self.collision_step()
+        if action is not None:
+            self.action_step("robot_0", action)
+
+        self.detect_step()
+        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
+
+        for robot_name in self.robots.keys():
+            self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state = self.render("state_pixels")
+        self.state["health"] = self.robots["robot_0"].health
+        self.state["pos"] = self.robots["robot_0"].getPos()
+        self.state["angle"] = self.robots["robot_0"].getAngle()
 
         step_reward = 0
         done = False
-        if action is not None: # First step without action, called from reset()
+        if action is not None:  # First step without action, called from reset()
             self.reward -= 0.1
-            # We actually don't want to count fuel spent, we want car to be faster.
-            #self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
-            self.car.fuel_spent = 0.0
             step_reward = self.reward - self.prev_reward
-            self.prev_reward = self.reward
-            x, y = self.car.hull.position
-            if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+            if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward = -100
+                step_reward -= 1000
+            if self.robots["robot_1"].health <= 0:
+                done = True
+                step_reward += 1000
+            self.prev_reward = self.reward
 
         return self.state, step_reward, done, {}
 
@@ -144,32 +192,41 @@ class CarRacing(gym.Env, EzPickle):
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
             self.score_label = pyglet.text.Label('0000', font_size=36,
-                x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
-                color=(255,255,255,255))
+                                                 x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
+                                                 color=(255, 255, 255, 255))
+            self.health_label = pyglet.text.Label('0000', font_size=16,
+                                                  x=520, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
+                                                  color=(255, 255, 255, 255))
+            self.bullets_label = pyglet.text.Label('0000', font_size=16,
+                                                   x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
+                                                   color=(255, 255, 255, 255))
             self.transform = rendering.Transform()
 
-        if "t" not in self.__dict__: return  # reset() not called yet
+        if "t" not in self.__dict__:
+            return  # reset() not called yet
 
         zoom = ZOOM*SCALE
-        zoom_state  = ZOOM*SCALE*STATE_W/WINDOW_W
-        zoom_video  = ZOOM*SCALE*VIDEO_W/WINDOW_W
-        #scroll_x = self.car.hull.position[0]
-        #scroll_y = self.car.hull.position[1]
-        #angle = -self.car.hull.angle
+        zoom_state = ZOOM*SCALE*STATE_W/WINDOW_W
+        zoom_video = ZOOM*SCALE*VIDEO_W/WINDOW_W
+        #scroll_x = self.car0.hull.position[0]
+        #scroll_y = self.car0.hull.position[1]
+        #angle = -self.car0.hull.angle
         scroll_x = 4.0
         scroll_y = 0.0
         angle = 0
-        #vel = self.car.hull.linearVelocity
-        #if np.linalg.norm(vel) > 0.5:
-            #angle = math.atan2(vel[0], vel[1])
+        #vel = self.car0.hull.linearVelocity
+        # if np.linalg.norm(vel) > 0.5:
+        #angle = math.atan2(vel[0], vel[1])
         self.transform.set_scale(zoom, zoom)
         self.transform.set_translation(
-            WINDOW_W/2 - (scroll_x*zoom*math.cos(angle) - scroll_y*zoom*math.sin(angle)),
-            WINDOW_H/4 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)) )
-        #self.transform.set_rotation(angle)
+            WINDOW_W/2 - (scroll_x*zoom*math.cos(angle) -
+                          scroll_y*zoom*math.sin(angle)),
+            WINDOW_H/4 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)))
+        # self.transform.set_rotation(angle)
 
         self.map.draw(self.viewer)
-        self.car.draw(self.viewer, mode!="state_pixels")
+        for robot_name in self.robots.keys():
+            self.robots[robot_name].draw(self.viewer)
         self.bullets.draw(self.viewer)
 
         arr = None
@@ -177,30 +234,8 @@ class CarRacing(gym.Env, EzPickle):
         if mode != 'state_pixels':
             win.switch_to()
             win.dispatch_events()
-        if mode=="rgb_array" or mode=="state_pixels":
-            win.clear()
-            t = self.transform
-            if mode=='rgb_array':
-                VP_W = VIDEO_W
-                VP_H = VIDEO_H
-            else:
-                VP_W = STATE_W
-                VP_H = STATE_H
-            gl.glViewport(0, 0, VP_W, VP_H)
-            t.enable()
-            for geom in self.viewer.onetime_geoms:
-                geom.render()
-            t.disable()
-            self.render_indicators(WINDOW_W, WINDOW_H)  # TODO: find why 2x needed, wtf
-            image_data = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
-            arr = np.fromstring(image_data.data, dtype=np.uint8, sep='')
-            arr = arr.reshape(VP_H, VP_W, 4)
-            arr = arr[::-1, :, 0:3]
 
-        if mode=="rgb_array" and not self.human_render: # agent can call or not call env.render() itself when recording video.
-            win.flip()
-
-        if mode=='human':
+        if mode == 'human':
             self.human_render = True
             win.clear()
             t = self.transform
@@ -237,31 +272,76 @@ class CarRacing(gym.Env, EzPickle):
                 gl.glVertex3f(k*x + 0, k*y + k, 0)
                 gl.glVertex3f(k*x + k, k*y + k, 0)
         gl.glEnd()
+        self.buff_areas.render(gl)
 
+        # self.render_buff_area(self.map.buff_area)
+
+    # def render_buff_area(self, buff_area):
+    #     gl.Begin(gl.GL_QUADS)
+    #     gl.glColor4f(1.0, 0.0, 0.0, 0.5)
+    #     for pos, box in buff_area:
+    #         pass
 
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward
+        self.health_label.text = "health left Car0 : {} Car1: {} ".format(
+            self.robots["robot_0"].health, self.robots["robot_1"].health)
+        self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
+            self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
+        )
         self.score_label.draw()
+        self.health_label.draw()
+        self.bullets_label.draw()
+
+class NaiveAgent():
+    def __init__(self):
+        pass
+
+    def run(self, observation, action):
+        pos = observation["pos"]
+        angle = observation["angle"]
+        robot_1 = observation["robot_1"]
+        if robot_1[0] > 0 and robot_1[1] > 0:
+            action[4] = +1.0
+        else:
+            action[4] = +0.0
+        return action
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     from pyglet.window import key
-    a = np.array( [0.0, 0.0, 0.0, 0.0] )
+    # gas, rotate, transverse, rotate cloud terrance, shoot, reload
+    a = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
     def key_press(k, mod):
         global restart
-        if k==0xff0d: restart = True
-        if k==key.LEFT:  a[0] = -1.0
-        if k==key.RIGHT: a[0] = +1.0
-        if k==key.UP:    a[1] = +0.2
-        if k==key.DOWN:  a[2] = +0.8   # set 1.0 for wheels to block to zero rotation
-        if k==key.SPACE: a[3] = +1.0
+        if k == key.ESCAPE: restart = True
+        if k == key.W: a[0] = +1.0
+        if k == key.S: a[0] = -1.0
+        if k == key.Q: a[1] = +1.0
+        if k == key.E: a[1] = -1.0
+        if k == key.D: a[2] = +1.0
+        if k == key.A: a[2] = -1.0
+        if k == key.Z: a[3] = +1.0
+        if k == key.C: a[3] = -1.0
+        if k == key.SPACE: a[4] = +1.0
+        if k == key.R: a[5] = +1.0
+
     def key_release(k, mod):
-        if k==key.LEFT  and a[0]==-1.0: a[0] = 0
-        if k==key.RIGHT and a[0]==+1.0: a[0] = 0
-        if k==key.UP:    a[1] = 0
-        if k==key.DOWN:  a[2] = 0
-        if k==key.SPACE: a[3] = 0
-    env = CarRacing()
+        if k == key.ESCAPE: restart = True
+        if k == key.W: a[0] = +0.0
+        if k == key.S: a[0] = -0.0
+        if k == key.Q: a[1] = +0.0
+        if k == key.E: a[1] = -0.0
+        if k == key.D: a[2] = +0.0
+        if k == key.A: a[2] = -0.0
+        if k == key.Z: a[3] = +0.0
+        if k == key.C: a[3] = -0.0
+        if k == key.SPACE: a[4] = +0.0
+        if k == key.R: a[5] = +0.0
+
+    agent = NaiveAgent()
+    env = ICRAField()
     env.render()
     record_video = False
     if record_video:
@@ -275,15 +355,19 @@ if __name__=="__main__":
         restart = False
         while True:
             s, r, done, info = env.step(a)
+            a = agent.run(s, a)
             total_reward += r
-            if steps % 200 == 0 or done:
-                print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
-                print("step {} total_reward {:+0.2f}".format(steps, total_reward))
+            # if steps % 200 == 0 or done:
+            #     print("state: {}".format(s))
+            #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
+            #     print("step {} total_reward {:+0.2f}".format(steps, total_reward))
                 #import matplotlib.pyplot as plt
-                #plt.imshow(s)
-                #plt.savefig("test.jpeg")
+                # plt.imshow(s)
+                # plt.savefig("test.jpeg")
             steps += 1
-            if not record_video: # Faster, but you can as well call env.render() every time to play full window.
+            # Faster, but you can as well call env.render() every time to play full window.
+            if not record_video:
                 env.render()
-            if done or restart: break
+            if done or restart:
+                break
     env.close()
