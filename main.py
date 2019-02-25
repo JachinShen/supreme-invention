@@ -119,7 +119,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
-        if int(self.t * FPS) % FPS == 1:
+        #print(int(self.t * FPS) % (60 * FPS))
+        if int(self.t * FPS) % (60 * FPS) == 0:
             self.robots[robot_name].refreshReloadOppotunity()
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
@@ -191,6 +192,9 @@ class ICRAField(gym.Env, EzPickle):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
+            self.time_label = pyglet.text.Label('0000', font_size=36,
+                                                 x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
+                                                 color=(255, 255, 255, 255))
             self.score_label = pyglet.text.Label('0000', font_size=36,
                                                  x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                                                  color=(255, 255, 255, 255))
@@ -283,12 +287,14 @@ class ICRAField(gym.Env, EzPickle):
     #         pass
 
     def render_indicators(self, W, H):
-        self.score_label.text = "%04i" % self.reward
+        self.time_label.text = "Time: {} s".format(int(self.t))
+        self.score_label.text = "Score: %04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.robots["robot_0"].health, self.robots["robot_1"].health)
         self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
             self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
         )
+        self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
         self.bullets_label.draw()
