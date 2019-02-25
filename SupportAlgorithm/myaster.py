@@ -20,7 +20,7 @@
 
 
 from Astar import astar, parse_grid
-import curses, random
+import random
 
 DUNGEON = """
     #################

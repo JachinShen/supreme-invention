@@ -1,31 +1,14 @@
-# Copyright (c) 2008 Mikael Lind
+# Copyright (c) 2019 Cedaroski
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
 
 from heapq import heappush, heappop
 from sys import maxsize
 import sys
 
 sys.path.append("..")
-import random
-from Referee.ICRAMap import BUFFAREA_BOX, COLOR_WHITE, BORDER_POS, BORDER_BOX, BUFFAREA_POS
+from util.Grid import view_grid, Cell, Grid, parse_grid, map2grid, view_path
+
+
 
 # Represent each node as a list, ordering the elements so that a heap of nodes
 # is ordered by f = g + h, with h as a first, greedy tie-breaker and num as a
@@ -35,57 +18,7 @@ from Referee.ICRAMap import BUFFAREA_BOX, COLOR_WHITE, BORDER_POS, BORDER_BOX, B
 F, H, NUM, G, POS, OPEN, VALID, PARENT = range(8)
 
 
-class Cell(object):
-
-    def __init__(self, char):
-        self.char = char
-        self.tag = 0
-        self.index = 0
-        self.neighbors = None
-
-
-class Grid(object):
-
-    def __init__(self, cells):
-        self.height, self.width = len(cells), len(cells[0])
-        self.cells = cells
-
-    def __contains__(self, pos):
-        y, x = pos
-        return 0 <= y < self.height and 0 <= x < self.width
-
-    def __getitem__(self, pos):
-        y, x = pos
-        return self.cells[y][x]
-
-    def neighbors(self, y, x):
-        for dy, dx in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1),
-                       (1, 0), (1, 1)):
-            if (y + dy, x + dx) in self:
-                yield y + dy, x + dx
-
-
-def parse_grid(grid_str, width, height):
-    # Split the grid string into lines.
-    lines = [line.rstrip() for line in grid_str.splitlines()[1:]]
-
-    # Pad the top and bottom.
-    top = (height - len(lines)) // 2
-    bottom = (height - len(lines) + 1) // 2
-    lines = ([''] * top + lines + [''] * bottom)[:height]
-
-    # Pad the left and right sides.
-    max_len = max(len(line) for line in lines)
-    left = (width - max_len) // 2
-    lines = [' ' * left + line.ljust(width - left)[:width - left]
-             for line in lines]
-
-    # Create the grid.
-    cells = [[Cell(char) for char in line] for line in lines]
-    return Grid(cells)
-
-
-def astar(DUNGEON, start_pos, start_g, destination, limit=maxsize):
+def astar(DUNGEON, width, height, start_pos, start_g, destination, limit=maxsize):
     """Find the shortest path from start to goal.
 
     Arguments:
@@ -108,11 +41,8 @@ def astar(DUNGEON, start_pos, start_g, destination, limit=maxsize):
     The function returns the best path found. The returned path excludes the
     starting position.
     """
-    HEIGHT, WIDTH = 22, 79
-    grid = parse_grid(DUNGEON, WIDTH, HEIGHT)
-    goal = (random.randrange(grid.height),
-            random.randrange(grid.width))
 
+    grid = parse_grid(DUNGEON, width, height)
     def goal(pos):
         return pos == destination
 
@@ -230,3 +160,64 @@ def astar(DUNGEON, start_pos, start_g, destination, limit=maxsize):
         current = nodes[current[PARENT]]
     path.reverse()
     return path
+
+
+if __name__ == '__main__':
+    import random
+    import string
+
+    DUNGEON2 = """
+        #################
+                        #
+                        #           ###########
+                        #                     #
+    #############       #                     #
+    #                   #                     #
+    #                   #                     #
+    #          ###################            #
+    #                            #            #
+    #                            #            #
+    #                            #       #    #
+    #                #############       #    #
+    #                                    #
+    ###############                      #          #
+                                         #          #
+                                         #          #
+                                         #          #
+                               ######################
+    """
+
+
+    class Engine(object):
+
+        def __init__(self, grid):
+            self.grid = grid
+            self.y = random.randrange(self.grid.height)
+            self.x = random.randrange(self.grid.width)
+            self.goal = (random.randrange(self.grid.height),
+                         random.randrange(self.grid.width))
+            self.limit = (self.grid.height * self.grid.width) // 2
+            self.nodes = {}
+            self.path = []
+
+        def update_path(self):
+            self.path = astar(DUNGEON, width, height, (self.y, self.x), 0, self.goal, self.limit)
+
+
+    HEIGHT, WIDTH = 22, 79
+    MAX_LIMIT = HEIGHT * WIDTH
+    LIMIT = MAX_LIMIT // 2
+    width = 220
+    height = 80
+    DUNGEON = map2grid(width, height)
+    # grid = parse_grid(DUNGEON, WIDTH, HEIGHT)
+    grid = parse_grid(DUNGEON, width, height)
+    engine = Engine(grid)
+
+    m = DUNGEON.__len__()
+    print('start from (', engine.y, engine.x, ')')
+    engine.update_path()
+    str = view_path(DUNGEON, engine.path, width)
+    print(engine.path)
+    print('Goal is ', engine.goal)
+    print(str)

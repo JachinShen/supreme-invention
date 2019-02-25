@@ -21,6 +21,10 @@
 
 from Astar import astar, parse_grid
 import curses, random
+import sys
+
+sys.path.append("..")
+from util.Grid import view_grid, Cell, Grid, parse_grid, map2grid
 
 DUNGEON = """
     #################
@@ -103,7 +107,7 @@ class Engine(object):
         self.path = astar(DUNGEON, (self.y, self.x), neighbors, goal, 0, cost,
                           estimate, self.limit, debug)
                           '''
-        self.path = astar(DUNGEON, (self.y, self.x), 0, self.goal, self.limit, )
+        self.path = astar(DUNGEON, WIDTH, HEIGHT, (self.y, self.x), 0, self.goal, self.limit, )
 
 
 def update_view(stdscr, engine):
