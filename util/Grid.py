@@ -56,7 +56,7 @@ def map2grid(width, height):
                 int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] + MAXSIZE * BORDER_BOX[k][0]))
         for i in range(hidx[0], hidx[1]):
             for j in range(max(widx[0], 1), widx[1]):
-                mylen = i * (width + 1) + j + 1
+                mylen = i * (width + 1) + j
                 str = str[:mylen] + '#' + str[mylen + 1:]
 
     return str
@@ -67,20 +67,19 @@ def parse_grid(grid_str, width, height):
     lines = [line.rstrip() for line in grid_str.splitlines()[1:]]
 
     # Pad the top and bottom.
-    top = (height - len(lines)) // 2
-    bottom = (height - len(lines) + 1) // 2
+    top = 0#(height - len(lines)) // 2
+    bottom =height #(height - len(lines) + 1) // 2
     lines = ([''] * top + lines + [''] * bottom)[:height]
 
     # Pad the left and right sides.
     max_len = max(len(line) for line in lines)
-    left = (width - max_len) // 2
+    left = 0#(width - max_len) // 2
     lines = [' ' * left + line.ljust(width - left)[:width - left]
              for line in lines]
 
     # Create the grid.
     cells = [[Cell(char) for char in line] for line in lines]
     return Grid(cells)
-
 
 def view_grid(grid):
     # Update the grid view.
@@ -93,14 +92,12 @@ def view_grid(grid):
             else:
                 str += ' '
         str += '\n'
-
-    print(str)
     return str
 
 
 def view_path(str, path, width):
     for i in range(path.__len__()):
-        mylen = path[i][0] * (width + 1) + path[i][1] + 1
+        mylen = path[i][0] * (width+1) + path[i][1]
         str = str[:mylen] + ':' + str[mylen + 1:]
 
     return str
@@ -109,9 +106,11 @@ def view_path(str, path, width):
 if __name__ == '__main__':
     import random
 
-    width = 220
-    height = 80
+    width = 250
+    height = 58
     str = map2grid(width, height)
+    print(str)
     mylen = str.__len__()
     grid = parse_grid(str, width, height)
-    view_grid(grid)
+    str=view_grid(grid)
+    print(str)

@@ -6,7 +6,7 @@ from sys import maxsize
 import sys
 
 sys.path.append("..")
-from util.Grid import view_grid, Cell, Grid, parse_grid, map2grid, view_path
+from util.Grid import  Cell, Grid, parse_grid, map2grid, view_path
 
 
 
@@ -190,34 +190,30 @@ if __name__ == '__main__':
 
     class Engine(object):
 
-        def __init__(self, grid):
-            self.grid = grid
-            self.y = random.randrange(self.grid.height)
-            self.x = random.randrange(self.grid.width)
-            self.goal = (random.randrange(self.grid.height),
-                         random.randrange(self.grid.width))
-            self.limit = (self.grid.height * self.grid.width) // 2
-            self.nodes = {}
-            self.path = []
+        def __init__(self, DUNGEON, width, height):
+            self.width = width
+            self.height = height
+            self.DUNGEON=DUNGEON
+
 
         def update_path(self):
-            self.path = astar(DUNGEON, width, height, (self.y, self.x), 0, self.goal, self.limit)
+            self.path = astar(self.DUNGEON, self.width, self.height, (20, 25), 0, (50, 60)) # (y,x)
 
 
     HEIGHT, WIDTH = 22, 79
     MAX_LIMIT = HEIGHT * WIDTH
     LIMIT = MAX_LIMIT // 2
-    width = 220
-    height = 80
+    width = 100
+    height = 57
     DUNGEON = map2grid(width, height)
-    # grid = parse_grid(DUNGEON, WIDTH, HEIGHT)
-    grid = parse_grid(DUNGEON, width, height)
-    engine = Engine(grid)
+    engine = Engine(DUNGEON, width, height)
 
     m = DUNGEON.__len__()
-    print('start from (', engine.y, engine.x, ')')
     engine.update_path()
-    str = view_path(DUNGEON, engine.path, width)
+    str2 = view_path(DUNGEON, engine.path, width)
+    print(str2)
+    mylen = 0 * (width) + 1
+    str2 = str2[:mylen] + '@' + str2[mylen + 1:]
     print(engine.path)
-    print('Goal is ', engine.goal)
-    print(str)
+
+
