@@ -68,7 +68,15 @@ class ICRAField(gym.Env, EzPickle):
         #self.observation_space = spaces.Box(
             #np.array([-1, -1, -1, -1, -1]),
             #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
-        self.state = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
+        self.state_dict = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
+
+    def get_state_array(self):
+        pos = self.state_dict["pos"]
+        velocity = self.state_dict["velocity"]
+        angle = self.state_dict["angle"]
+        health = self.state_dict["health"]
+        robot_1 = self.state_dict["robot_1"]
+        return np.array([pos[0], pos[1], velocity[0], velocity[1], angle])
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -165,9 +173,9 @@ class ICRAField(gym.Env, EzPickle):
 
         for robot_name in self.robots.keys():
             if robot_name in detected.keys():
-                self.state[robot_name] = detected[robot_name]
+                self.state_dict[robot_name] = detected[robot_name]
             else:
-                self.state[robot_name] = (-1, -1)
+                self.state_dict[robot_name] = (-1, -1)
 
     def step(self, action):
         self.collision_step()
@@ -182,10 +190,10 @@ class ICRAField(gym.Env, EzPickle):
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state["health"] = self.robots["robot_0"].health
-        self.state["pos"] = self.robots["robot_0"].getPos()
-        self.state["angle"] = self.robots["robot_0"].getAngle()
-        self.state["velocity"] = self.robots["robot_0"].getVelocity()
+        self.state_dict["health"] = self.robots["robot_0"].health
+        self.state_dict["pos"] = self.robots["robot_0"].getPos()
+        self.state_dict["angle"] = self.robots["robot_0"].getAngle()
+        self.state_dict["velocity"] = self.robots["robot_0"].getVelocity()
 
         step_reward = 0
         done = False
@@ -200,7 +208,7 @@ class ICRAField(gym.Env, EzPickle):
                 step_reward += 1000
             self.prev_reward = self.reward
 
-        return self.state, step_reward, done, {}
+        return self.state_dict, step_reward, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
@@ -299,14 +307,6 @@ class ICRAField(gym.Env, EzPickle):
         self.buff_areas.render(gl)
         self.supply_areas.render(gl)
 
-        # self.render_buff_area(self.map.buff_area)
-
-    # def render_buff_area(self, buff_area):
-    #     gl.Begin(gl.GL_QUADS)
-    #     gl.glColor4f(1.0, 0.0, 0.0, 0.5)
-    #     for pos, box in buff_area:
-    #         pass
-
     def render_indicators(self, W, H):
         self.time_label.text = "Time: {} s".format(int(self.t))
         self.score_label.text = "Score: %04i" % self.reward
@@ -325,21 +325,6 @@ class ICRAField(gym.Env, EzPickle):
         self.bullets_label.draw()
         self.buff_stay_time.draw()
         self.buff_left_time.draw()
-
-class NaiveAgent():
-    def __init__(self):
-        pass
-
-    def run(self, observation, action):
-        pos = observation["pos"]
-        angle = observation["angle"]
-        robot_1 = observation["robot_1"]
-        if robot_1[0] > 0 and robot_1[1] > 0:
-            action[4] = +1.0
-        else:
-            action[4] = +0.0
-        return action
-
 
 if __name__ == "__main__":
     from pyglet.window import key
@@ -373,8 +358,6 @@ if __name__ == "__main__":
         if k == key.SPACE: a[4] = +0.0
         if k == key.R: a[5] = +0.0
 
-    agent = NaiveAgent()
-
     env = ICRAField()
     env.render()
     record_video = False
@@ -400,9 +383,6 @@ if __name__ == "__main__":
             #     print("state: {}".format(s))
             #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
             #     print("step {} total_reward {:+0.2f}".format(steps, total_reward))
-                #import matplotlib.pyplot as plt
-                # plt.imshow(s)
-                # plt.savefig("test.jpeg")
             steps += 1
             # Faster, but you can as well call env.render() every time to play full window.
             if not record_video:
