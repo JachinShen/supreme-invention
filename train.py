@@ -128,7 +128,7 @@ class DQNAgent():
         expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -139,6 +139,9 @@ class DQNAgent():
 
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def save(self):
+        torch.save(self.policy_net.state_dict(), "ICRA.model")
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -153,13 +156,16 @@ episode_durations = []
 
 num_episodes = 50
 for i_episode in range(num_episodes):
+    print("Epoch: {}".format(i_episode))
     # Initialize the environment and state
     action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     env.reset()
     state_dict, reward, done, info = env.step(action)
     state_array = env.get_state_array()
-    state = torch.from_numpy(state_array).unsqueeze(0)
+    state = torch.from_numpy(state_array).to(device).unsqueeze(0)
     for t in range(7*60*30):
+        if t % (60*30) == 0:
+            print("Simulation in minute: {}".format(t))
         # Select and perform an action
         x, y, _ = agent.select_goal(state)
 
@@ -186,10 +192,10 @@ for i_episode in range(num_episodes):
             episode_durations.append(t + 1)
             break
     # Update the target network, copying all weights and biases in DQN
-    print("Epoch: {}".format(i_episode))
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()
 
 print('Complete')
+agent.save()
 env.render()
 env.close()
