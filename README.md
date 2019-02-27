@@ -26,6 +26,10 @@ Modify the map and set the unit to meter
 
 ![](./Field.png)
 
+Add the utils of map to grid function.
+Add  Astar algorithm in ./SupportAlgorithm  by grid 
+Add Move point to point function in ./SupportAlgorithm
+
 ## TODO
 
 1. ICRA Map Construction

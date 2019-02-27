@@ -32,8 +32,8 @@ class ICRAMap:
             #userData = "wall"
             fixtures = [
                 fixtureDef(
-                    shape = polygonShape(box=b), 
-                    density=0.01, userData="wall")
+                    shape = polygonShape(box=b),
+                    density=0.01, userData="wall", friction=1)
             ]
             ) for p, b in zip(BORDER_POS, BORDER_BOX)]
         for i in range(len(self.borders)):
