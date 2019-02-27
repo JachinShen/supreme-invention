@@ -18,6 +18,7 @@ from Referee.BuffArea import AllBuffArea
 from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
+from SupportAlgorithm.MoveAction import MoveAction
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -67,7 +68,7 @@ class ICRAField(gym.Env, EzPickle):
         #self.observation_space = spaces.Box(
             #np.array([-1, -1, -1, -1, -1]),
             #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
-        self.state = {"pos": (-1,-1), "angle": -1, "robot_1": (-1,-1), "health":-1}
+        self.state = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -184,6 +185,7 @@ class ICRAField(gym.Env, EzPickle):
         self.state["health"] = self.robots["robot_0"].health
         self.state["pos"] = self.robots["robot_0"].getPos()
         self.state["angle"] = self.robots["robot_0"].getAngle()
+        self.state["velocity"] = self.robots["robot_0"].getVelocity()
 
         step_reward = 0
         done = False
@@ -372,6 +374,7 @@ if __name__ == "__main__":
         if k == key.R: a[5] = +0.0
 
     agent = NaiveAgent()
+
     env = ICRAField()
     env.render()
     record_video = False
@@ -384,10 +387,15 @@ if __name__ == "__main__":
         total_reward = 0.0
         steps = 0
         restart = False
+        s, r, done, info = env.step(a)
+        target = Box2D.b2Vec2(6, 4.5)
+        move = MoveAction(target, s)
         while True:
             s, r, done, info = env.step(a)
-            a = agent.run(s, a)
+            a = move.MoveTo(s, a)
+            # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
+
             # if steps % 200 == 0 or done:
             #     print("state: {}".format(s))
             #     print("action " + str(["{:+0.2f}".format(x) for x in a]))

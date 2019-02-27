@@ -65,7 +65,7 @@ class Robot:
                 angle = 0,
                 fixtures = fixtureDef(
                     shape=polygonShape(vertices=[ (x*front_k*SIZE,y*front_k*SIZE) for x,y in WHEEL_POLY ]),
-                    density=0.1, restitution=1, userData=userData+"_wheel")
+                    density=0.1, restitution=1, userData=userData + "_wheel", friction=1)
                     )
             rjd = revoluteJointDef(
                 bodyA=self.hull,
@@ -148,6 +148,9 @@ class Robot:
     
     def getPos(self):
         return self.hull.position
+
+    def getVelocity(self):
+        return self.hull.linearVelocity
 
     def getAngle(self):
         return self.hull.angle
