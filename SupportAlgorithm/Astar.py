@@ -197,14 +197,13 @@ if __name__ == '__main__':
 
 
         def update_path(self):
-            self.path = astar(self.DUNGEON, self.width, self.height, (20, 25), 0, (50, 60)) # (y,x)
+            self.path = astar(self.DUNGEON, self.width, self.height, (20, 15), 0, (50, 60))  # (y,x)
 
 
-    HEIGHT, WIDTH = 22, 79
-    MAX_LIMIT = HEIGHT * WIDTH
-    LIMIT = MAX_LIMIT // 2
+
+
     width = 100
-    height = 57
+    height = 60
     DUNGEON = map2grid(width, height)
     engine = Engine(DUNGEON, width, height)
 

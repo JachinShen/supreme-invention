@@ -17,6 +17,7 @@ from Referee.ICRAMap import ICRAMap
 from Referee.BuffArea import AllBuffArea
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
+from SupportAlgorithm.MoveAction import MoveAction
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -341,6 +342,7 @@ if __name__ == "__main__":
         if k == key.R: a[5] = +0.0
 
     agent = NaiveAgent()
+    move = MoveAction()
     env = ICRAField()
     env.render()
     record_video = False
@@ -355,8 +357,11 @@ if __name__ == "__main__":
         restart = False
         while True:
             s, r, done, info = env.step(a)
+            target = Box2D.b2Vec2(0.8, 4)
+            a = move.MoveTo(target, s, a)
             a = agent.run(s, a)
             total_reward += r
+
             # if steps % 200 == 0 or done:
             #     print("state: {}".format(s))
             #     print("action " + str(["{:+0.2f}".format(x) for x in a]))

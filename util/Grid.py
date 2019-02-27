@@ -44,16 +44,17 @@ def map2grid(width, height):
     str = ''
     MAXSIZE = 10
     BIAS = 0.5
+    BODYSIZE = 0.25
     for i in range(height):
         str += '\n'
         for j in range(width):
             str += ' '
 
     for k in range(BORDER_POS.__len__()):
-        hidx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] - MAXSIZE * BORDER_BOX[k][1]),
-                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] + MAXSIZE * BORDER_BOX[k][1]))
-        widx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] - MAXSIZE * BORDER_BOX[k][0]),
-                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] + MAXSIZE * BORDER_BOX[k][0]))
+        hidx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] - MAXSIZE * BORDER_BOX[k][1] - MAXSIZE * BODYSIZE),
+                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] + MAXSIZE * BORDER_BOX[k][1] + MAXSIZE * BODYSIZE))
+        widx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] - MAXSIZE * BORDER_BOX[k][0] - MAXSIZE * BODYSIZE),
+                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] + MAXSIZE * BORDER_BOX[k][0] + MAXSIZE * BODYSIZE))
         for i in range(hidx[0], hidx[1]):
             for j in range(max(widx[0], 1), widx[1]):
                 mylen = i * (width + 1) + j
