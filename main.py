@@ -66,7 +66,7 @@ class ICRAField(gym.Env, EzPickle):
         #self.observation_space = spaces.Box(
             #np.array([-1, -1, -1, -1, -1]),
             #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
-        self.state = {"pos": (-1,-1), "angle": -1, "robot_1": (-1,-1), "health":-1}
+        self.state = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -172,6 +172,7 @@ class ICRAField(gym.Env, EzPickle):
         self.state["health"] = self.robots["robot_0"].health
         self.state["pos"] = self.robots["robot_0"].getPos()
         self.state["angle"] = self.robots["robot_0"].getAngle()
+        self.state["velocity"] = self.robots["robot_0"].getVelocity()
 
         step_reward = 0
         done = False
@@ -342,7 +343,7 @@ if __name__ == "__main__":
         if k == key.R: a[5] = +0.0
 
     agent = NaiveAgent()
-    move = MoveAction()
+
     env = ICRAField()
     env.render()
     record_video = False
@@ -355,11 +356,13 @@ if __name__ == "__main__":
         total_reward = 0.0
         steps = 0
         restart = False
+        s, r, done, info = env.step(a)
+        target = Box2D.b2Vec2(6, 4.5)
+        move = MoveAction(target, s)
         while True:
             s, r, done, info = env.step(a)
-            target = Box2D.b2Vec2(0.8, 4)
-            a = move.MoveTo(target, s, a)
-            a = agent.run(s, a)
+            a = move.MoveTo(s, a)
+            # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 
             # if steps % 200 == 0 or done:

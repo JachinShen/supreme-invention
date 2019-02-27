@@ -3,10 +3,11 @@
 
 from heapq import heappush, heappop
 from sys import maxsize
+import copy
 import sys
 
 sys.path.append("..")
-from util.Grid import  Cell, Grid, parse_grid, map2grid, view_path
+from util.Grid import Cell, Grid, parse_grid, map2grid, view_path, grid2world, world2grid
 
 
 
@@ -162,10 +163,24 @@ def astar(DUNGEON, width, height, start_pos, start_g, destination, limit=maxsize
     return path
 
 
+def pathprocess(path):
+    len = path.__len__()
+    tmp = copy.deepcopy(path)
+    for i, val in enumerate(path):
+        if i + 1 < len and i - 1 >= 0:
+            biasx1 = (path[i][0] - path[i - 1][0])
+            biasx2 = (path[i + 1][0] - path[i][0])
+            biasy1 = (path[i][1] - path[i - 1][1])
+            biasy2 = (path[i + 1][1] - path[i][1])
+            if biasx1 == biasx2 and biasy1 == biasy2:
+                tmp.remove(val)
+    return tmp
+
+
 if __name__ == '__main__':
     import random
     import string
-
+    import Box2D
     DUNGEON2 = """
         #################
                         #
@@ -197,7 +212,11 @@ if __name__ == '__main__':
 
 
         def update_path(self):
-            self.path = astar(self.DUNGEON, self.width, self.height, (20, 15), 0, (50, 60))  # (y,x)
+            target = world2grid(Box2D.b2Vec2(6, 1.5))
+            world = grid2world(target)
+            print(world)
+            print(target)
+            self.path = astar(self.DUNGEON, self.width, self.height, (50, 10), 0, target)  # (y,x)
 
 
 
@@ -209,7 +228,10 @@ if __name__ == '__main__':
 
     m = DUNGEON.__len__()
     engine.update_path()
+    tmp = engine.path
+    path = pathprocess(tmp)
     str2 = view_path(DUNGEON, engine.path, width)
+
     print(str2)
     mylen = 0 * (width) + 1
     str2 = str2[:mylen] + '@' + str2[mylen + 1:]

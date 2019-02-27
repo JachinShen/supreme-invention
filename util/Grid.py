@@ -1,5 +1,5 @@
 import sys
-
+import Box2D
 sys.path.append("..")
 import random
 from Referee.ICRAMap import BORDER_POS, BORDER_BOX
@@ -9,6 +9,9 @@ BORDER_POS = [(-0.1, 2.5), (4, -0.1), (4, 5.1), (8.1, 2.5), (1.525, 1.9), (3.375
 BORDER_BOX = [(0.1, 2.5), (4, 0.1), (4, 0.1), (0.1, 2.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
               (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
+MAXSCALE = 10
+BIAS = 0.5
+BODYSIZE = 0.43
 
 class Cell(object):
 
@@ -42,19 +45,17 @@ class Grid(object):
 
 def map2grid(width, height):
     str = ''
-    MAXSIZE = 10
-    BIAS = 0.5
-    BODYSIZE = 0.25
+
     for i in range(height):
         str += '\n'
         for j in range(width):
             str += ' '
 
     for k in range(BORDER_POS.__len__()):
-        hidx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] - MAXSIZE * BORDER_BOX[k][1] - MAXSIZE * BODYSIZE),
-                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][1] + MAXSIZE * BORDER_BOX[k][1] + MAXSIZE * BODYSIZE))
-        widx = (int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] - MAXSIZE * BORDER_BOX[k][0] - MAXSIZE * BODYSIZE),
-                int(MAXSIZE * BIAS + MAXSIZE * BORDER_POS[k][0] + MAXSIZE * BORDER_BOX[k][0] + MAXSIZE * BODYSIZE))
+        hidx = (int(MAXSCALE * BIAS + MAXSCALE * BORDER_POS[k][1] - MAXSCALE * BORDER_BOX[k][1] - MAXSCALE * BODYSIZE),
+                int(MAXSCALE * BIAS + MAXSCALE * BORDER_POS[k][1] + MAXSCALE * BORDER_BOX[k][1] + MAXSCALE * BODYSIZE))
+        widx = (int(MAXSCALE * BIAS + MAXSCALE * BORDER_POS[k][0] - MAXSCALE * BORDER_BOX[k][0] - MAXSCALE * BODYSIZE),
+                int(MAXSCALE * BIAS + MAXSCALE * BORDER_POS[k][0] + MAXSCALE * BORDER_BOX[k][0] + MAXSCALE * BODYSIZE))
         for i in range(hidx[0], hidx[1]):
             for j in range(max(widx[0], 1), widx[1]):
                 mylen = i * (width + 1) + j
@@ -98,10 +99,23 @@ def view_grid(grid):
 
 def view_path(str, path, width):
     for i in range(path.__len__()):
-        mylen = path[i][0] * (width+1) + path[i][1]
+        mylen = path[i][0] * (width + 1) + path[i][1] + 1
         str = str[:mylen] + ':' + str[mylen + 1:]
 
     return str
+
+
+def grid2world(path):
+    cood = Box2D.b2Vec2((float(path[1] + 1)) / MAXSCALE - BIAS,
+                        (float(path[0])) / MAXSCALE - BIAS)
+    return cood
+
+
+def world2grid(cood):
+    path = (int(MAXSCALE * BIAS) + int(MAXSCALE * cood.y),
+            int(MAXSCALE * BIAS) + int(MAXSCALE * cood.x) - 1)
+
+    return path
 
 
 if __name__ == '__main__':
