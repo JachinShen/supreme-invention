@@ -1,8 +1,8 @@
 BUFFAREABOX_RED = (5.8, 1.25, 1.0, 1.0) #(x, y, w, h)
 BUFFAREABOX_BLUE = (1.2, 2.75, 1.0, 1.0)
 
-COLOR_RED = (1.0, 0, 0, 1.0)
-COLOR_BLUE = (0, 0, 1.0, 1.0)
+COLOR_RED = (0.9, 0.4, 0.4, 1.0)
+COLOR_BLUE = (0.4, 0.4, 9.0, 1.0)
 
 FPS = 30
 

@@ -109,7 +109,7 @@ class ICRAField(gym.Env, EzPickle):
         red_color = (0.8,0.0,0.0)
         blue_color = (0.0, 0.0, 0.8)
         self.robots['robot_0'] = Robot(self.world, -np.pi/2, 0.5, 4.5, 'robot_0', 0, 'red', red_color)
-        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 6.5, 4.5, 'robot_1', 1, 'blue', blue_color)
+        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 2.5, 3.5, 'robot_1', 1, 'blue', blue_color)
 
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
@@ -179,11 +179,10 @@ class ICRAField(gym.Env, EzPickle):
 
     def step(self, action):
         self.collision_step()
-        if action is not None:
-            self.action_step("robot_0", action)
-
         self.detect_step()
         self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
+        if action is not None:
+            self.action_step("robot_0", action)
 
         for robot_name in self.robots.keys():
             self.robots[robot_name].step(1.0/FPS)
@@ -198,14 +197,15 @@ class ICRAField(gym.Env, EzPickle):
         step_reward = 0
         done = False
         if action is not None:  # First step without action, called from reset()
-            self.reward -= 0.1
+            self.reward = self.robots["robot_0"].health - self.robots["robot_1"].health
+            self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward -= 1000
+                step_reward -= 10000
             if self.robots["robot_1"].health <= 0:
                 done = True
-                step_reward += 1000
+                step_reward += 10000
             self.prev_reward = self.reward
 
         return self.state_dict, step_reward, done, {}
@@ -379,10 +379,10 @@ if __name__ == "__main__":
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 
-            # if steps % 200 == 0 or done:
+            if steps % 200 == 0 or done:
             #     print("state: {}".format(s))
             #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
-            #     print("step {} total_reward {:+0.2f}".format(steps, total_reward))
+                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
             steps += 1
             # Faster, but you can as well call env.render() every time to play full window.
             if not record_video:

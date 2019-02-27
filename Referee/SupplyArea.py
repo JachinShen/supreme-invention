@@ -1,8 +1,8 @@
 SUPPLYAREABOX_RED = (3.5, 4.0, 1.0, 1.0) #(x, y, w, h)
 SUPPLYAREABOX_BLUE = (3.5, 0, 1.0, 1.0)
 
-COLOR_RED = (0.8, 0, 0, 0.8)
-COLOR_BLUE = (0, 0, 0.8, 0.8)
+COLOR_RED = (0.9, 0.4, 0.4, 1.0)
+COLOR_BLUE = (0.4, 0.4, 9.0, 1.0)
 
 class SupplyAreas(object):
     def __init__(self):

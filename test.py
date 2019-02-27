@@ -132,6 +132,10 @@ class DQNAgent():
     def save(self):
         torch.save(self.policy_net.state_dict(), "ICRA.model")
 
+    def load(self):
+        self.policy_net.load_state_dict(torch.load("ICRA.model", map_location=self.device))
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+
 seed = 233
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
@@ -140,6 +144,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
+agent.load()
 device = agent.device
 episode_durations = []
 
@@ -174,14 +179,10 @@ for i_episode in range(num_episodes):
         reward = torch.tensor([reward], device=device).double()
         goal = torch.tensor([x, y], device=device)
 
-        # Store the transition in memory
-        agent.memory.push(state, goal, next_state, reward)
-
         # Move to the next state
         state = next_state
+        env.render()
 
-        # Perform one step of the optimization (on the target network)
-        agent.optimize_model()
         if done:
             episode_durations.append(t + 1)
             break
@@ -189,6 +190,4 @@ for i_episode in range(num_episodes):
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()
 
-print('Complete')
-agent.save()
 env.close()
