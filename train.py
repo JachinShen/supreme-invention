@@ -24,14 +24,14 @@ episode_durations = []
 
 num_episodes = 5000
 for i_episode in range(num_episodes):
-    print("Epoch: {}".format(i_episode))
+    print("Epoch: [{}/{}]".format(i_episode, num_episodes))
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     env.reset()
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         if t % (60*30) == 0:
-            print("Simulation in minute: {}".format(t//(60*30)))
+            print("Simulation in minute: [{}/{}]".format(t//(60*30)+1, 7))
         # Select and perform an action
         if state[5] > 0:
             action[4] = +1.0
@@ -52,6 +52,7 @@ for i_episode in range(num_episodes):
             break
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
+        print("Last reward: {}".format(reward))
         agent.update_target_net()
         agent.save()
 

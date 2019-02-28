@@ -1,5 +1,6 @@
 import sys
 import math
+import random
 import numpy as np
 
 import Box2D
@@ -109,7 +110,7 @@ class ICRAField(gym.Env, EzPickle):
         red_color = (0.8,0.0,0.0)
         blue_color = (0.0, 0.0, 0.8)
         self.robots['robot_0'] = Robot(self.world, -np.pi/2, 0.5, 4.5, 'robot_0', 0, 'red', red_color)
-        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 2.5, 3.5, 'robot_1', 1, 'blue', blue_color)
+        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(), 'robot_1', 1, 'blue', blue_color)
 
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
@@ -155,10 +156,10 @@ class ICRAField(gym.Env, EzPickle):
     def detect_step(self):
         detected = {}
         # self.robots["robot_0"].setCloudTerrance(1)
-        for i in range(-15, 15):
+        for i in range(-60, 60, 5):
             angle, pos = self.robots["robot_0"].getGunAnglePos()
             angle += i/180*math.pi
-            p1 = (pos[0] + 0.5*math.cos(angle), pos[1] + 0.5*math.sin(angle))
+            p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
             self.world.RayCast(self.detect_callback, p1, p2)
             u = self.detect_callback.userData
