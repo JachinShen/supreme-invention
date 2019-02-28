@@ -76,7 +76,7 @@ class ICRAField(gym.Env, EzPickle):
         angle = self.state_dict["angle"]
         health = self.state_dict["health"]
         robot_1 = self.state_dict["robot_1"]
-        return [pos[0], pos[1], velocity[0], velocity[1], angle]
+        return [pos[0], pos[1], velocity[0], velocity[1], angle, robot_1[0], robot_1[1]]
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

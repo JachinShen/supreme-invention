@@ -7,7 +7,7 @@ class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(5, 160),
+            nn.Linear(7, 160),
         )
 
     def forward(self, s):
