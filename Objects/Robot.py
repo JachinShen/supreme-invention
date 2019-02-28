@@ -35,13 +35,16 @@ GUN_BOX = (20*SIZE, 130*SIZE)
 
 BULLETS_ADDED_ONE_TIME = 50
 
+from Referee.SupplyArea import SUPPLYAREABOX_RED
+from Referee.SupplyArea import SUPPLYAREABOX_BLUE
+
 SUPPLY_AREAS = {
-    'red': (3.0, 3.0, 2.0, 2.0), #(x, y, w, h)
-    'blue': (5.0, 1.0, 1.0, 1.0)
+    'red': SUPPLYAREABOX_RED, #(x, y, w, h)
+    'blue': SUPPLYAREABOX_BLUE
 }
 
 class Robot:
-    def __init__(self, world, init_angle, init_x, init_y, userData, robot_id, group='red'):
+    def __init__(self, world, init_angle, init_x, init_y, userData, robot_id, group, color):
         self.world = world
         self.hull = self.world.CreateDynamicBody(
             position = (init_x, init_y),
@@ -51,7 +54,8 @@ class Robot:
                     density=1.0, restitution=1, userData=userData),
                 ]
             )
-        self.hull.color = (0.8,0.0,0.0)
+        # self.hull.color = (0.8,0.0,0.0)
+        self.hull.color = color
         self.hull.userData = userData
         self.wheels = []
         for wx,wy in WHEEL_POS:
@@ -123,6 +127,7 @@ class Robot:
             return
         self.opportuniy_to_add_bullets -= 1
         if(self.isInSupplyArea()):
+        # if(SupplyAreas.isInSupplyArea(self)):
             self.bullets_num += BULLETS_ADDED_ONE_TIME
 
     def isInSupplyArea(self):

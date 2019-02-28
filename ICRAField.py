@@ -15,6 +15,7 @@ from Objects.Robot import Robot
 from Objects.Bullet import Bullet
 from Referee.ICRAMap import ICRAMap
 from Referee.BuffArea import AllBuffArea
+from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
 from SupportAlgorithm.MoveAction import MoveAction
@@ -54,6 +55,7 @@ class ICRAField(gym.Env, EzPickle):
         self.map = None
         self.buff_areas = None
         self.bullets = None
+        self.supply_areas = None
         self.detect_callback = detectCallback()
 
         self.reward = 0.0
@@ -66,7 +68,15 @@ class ICRAField(gym.Env, EzPickle):
         #self.observation_space = spaces.Box(
             #np.array([-1, -1, -1, -1, -1]),
             #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
-        self.state = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
+        self.state_dict = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
+
+    def get_state_array(self):
+        pos = self.state_dict["pos"]
+        velocity = self.state_dict["velocity"]
+        angle = self.state_dict["angle"]
+        health = self.state_dict["health"]
+        robot_1 = self.state_dict["robot_1"]
+        return np.array([pos[0], pos[1], velocity[0], velocity[1], angle])
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -91,13 +101,20 @@ class ICRAField(gym.Env, EzPickle):
         self.human_render = False
 
         self.robots = {}
-        for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
-            self.robots[robot_name] = Robot(
-                 self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
-                # self.world, 0 , x, 4.5, robot_name, 0, 'red')
+
+
+        # for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
+        #     self.robots[robot_name] = Robot(
+        #          self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
+        red_color = (0.8,0.0,0.0)
+        blue_color = (0.0, 0.0, 0.8)
+        self.robots['robot_0'] = Robot(self.world, -np.pi/2, 0.5, 4.5, 'robot_0', 0, 'red', red_color)
+        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 2.5, 3.5, 'robot_1', 1, 'blue', blue_color)
+
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
+        self.supply_areas = SupplyAreas()
 
         return self.step(None)[0]
 
@@ -107,7 +124,10 @@ class ICRAField(gym.Env, EzPickle):
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
         for bullet, robot in collision_bullet_robot:
             self.bullets.destroyById(bullet)
-            self.robots[robot].loseHealth(50)
+            if(self.robots[robot].buffLeftTime) > 0:
+                self.robots[robot].loseHealth(25)
+            else:
+                self.robots[robot].loseHealth(50)
         for bullet in collision_bullet_wall:
             self.bullets.destroyById(bullet)
         for robot in collision_robot_wall:
@@ -120,7 +140,8 @@ class ICRAField(gym.Env, EzPickle):
         self.robots[robot_name].turnLeftRight(action[1]/2)
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
-        if int(self.t * FPS) % FPS == 1:
+        #print(int(self.t * FPS) % (60 * FPS))
+        if int(self.t * FPS) % (60 * FPS) == 0:
             self.robots[robot_name].refreshReloadOppotunity()
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
@@ -152,47 +173,50 @@ class ICRAField(gym.Env, EzPickle):
 
         for robot_name in self.robots.keys():
             if robot_name in detected.keys():
-                self.state[robot_name] = detected[robot_name]
+                self.state_dict[robot_name] = detected[robot_name]
             else:
-                self.state[robot_name] = (-1, -1)
+                self.state_dict[robot_name] = (-1, -1)
 
     def step(self, action):
         self.collision_step()
-        if action is not None:
-            self.action_step("robot_0", action)
-
         self.detect_step()
         self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
+        if action is not None:
+            self.action_step("robot_0", action)
 
         for robot_name in self.robots.keys():
             self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state["health"] = self.robots["robot_0"].health
-        self.state["pos"] = self.robots["robot_0"].getPos()
-        self.state["angle"] = self.robots["robot_0"].getAngle()
-        self.state["velocity"] = self.robots["robot_0"].getVelocity()
+        self.state_dict["health"] = self.robots["robot_0"].health
+        self.state_dict["pos"] = self.robots["robot_0"].getPos()
+        self.state_dict["angle"] = self.robots["robot_0"].getAngle()
+        self.state_dict["velocity"] = self.robots["robot_0"].getVelocity()
 
         step_reward = 0
         done = False
         if action is not None:  # First step without action, called from reset()
-            self.reward -= 0.1
+            self.reward = self.robots["robot_0"].health - self.robots["robot_1"].health
+            self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward -= 1000
+                step_reward -= 10000
             if self.robots["robot_1"].health <= 0:
                 done = True
-                step_reward += 1000
+                step_reward += 10000
             self.prev_reward = self.reward
 
-        return self.state, step_reward, done, {}
+        return self.state_dict, step_reward, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
+            self.time_label = pyglet.text.Label('0000', font_size=36,
+                                                 x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
+                                                 color=(255, 255, 255, 255))
             self.score_label = pyglet.text.Label('0000', font_size=36,
                                                  x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                                                  color=(255, 255, 255, 255))
@@ -202,6 +226,12 @@ class ICRAField(gym.Env, EzPickle):
             self.bullets_label = pyglet.text.Label('0000', font_size=16,
                                                    x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
                                                    color=(255, 255, 255, 255))
+            self.buff_stay_time = pyglet.text.Label('0000', font_size=16,
+                                                   x=520, y=WINDOW_H*4.5/40.00, anchor_x='left', anchor_y='center',
+                                                   color=(255, 255, 255, 255))
+            self.buff_left_time = pyglet.text.Label('0000', font_size=16,
+                                                    x=520, y=WINDOW_H * 5.5 / 40.00, anchor_x='left', anchor_y='center',
+                                                    color=(255, 255, 255, 255))
             self.transform = rendering.Transform()
 
         if "t" not in self.__dict__:
@@ -275,40 +305,26 @@ class ICRAField(gym.Env, EzPickle):
                 gl.glVertex3f(k*x + k, k*y + k, 0)
         gl.glEnd()
         self.buff_areas.render(gl)
-
-        # self.render_buff_area(self.map.buff_area)
-
-    # def render_buff_area(self, buff_area):
-    #     gl.Begin(gl.GL_QUADS)
-    #     gl.glColor4f(1.0, 0.0, 0.0, 0.5)
-    #     for pos, box in buff_area:
-    #         pass
+        self.supply_areas.render(gl)
 
     def render_indicators(self, W, H):
-        self.score_label.text = "%04i" % self.reward
+        self.time_label.text = "Time: {} s".format(int(self.t))
+        self.score_label.text = "Score: %04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.robots["robot_0"].health, self.robots["robot_1"].health)
         self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
             self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
         )
+        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.buff_areas.buffAreas[0].maxStayTime),
+                                                                    int(self.buff_areas.buffAreas[1].maxStayTime))
+        self.buff_left_time.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.robots['robot_0'].buffLeftTime),
+                                                                         int(self.robots['robot_1'].buffLeftTime))
+        self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
         self.bullets_label.draw()
-
-class NaiveAgent():
-    def __init__(self):
-        pass
-
-    def run(self, observation, action):
-        pos = observation["pos"]
-        angle = observation["angle"]
-        robot_1 = observation["robot_1"]
-        if robot_1[0] > 0 and robot_1[1] > 0:
-            action[4] = +1.0
-        else:
-            action[4] = +0.0
-        return action
-
+        self.buff_stay_time.draw()
+        self.buff_left_time.draw()
 
 if __name__ == "__main__":
     from pyglet.window import key
@@ -342,8 +358,6 @@ if __name__ == "__main__":
         if k == key.SPACE: a[4] = +0.0
         if k == key.R: a[5] = +0.0
 
-    agent = NaiveAgent()
-
     env = ICRAField()
     env.render()
     record_video = False
@@ -365,13 +379,10 @@ if __name__ == "__main__":
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 
-            # if steps % 200 == 0 or done:
+            if steps % 200 == 0 or done:
             #     print("state: {}".format(s))
             #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
-            #     print("step {} total_reward {:+0.2f}".format(steps, total_reward))
-                #import matplotlib.pyplot as plt
-                # plt.imshow(s)
-                # plt.savefig("test.jpeg")
+                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
             steps += 1
             # Faster, but you can as well call env.render() every time to play full window.
             if not record_video:
