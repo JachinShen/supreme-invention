@@ -76,7 +76,7 @@ class ICRAField(gym.Env, EzPickle):
         angle = self.state_dict["angle"]
         health = self.state_dict["health"]
         robot_1 = self.state_dict["robot_1"]
-        return np.array([pos[0], pos[1], velocity[0], velocity[1], angle])
+        return [pos[0], pos[1], velocity[0], velocity[1], angle]
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -208,7 +208,7 @@ class ICRAField(gym.Env, EzPickle):
                 step_reward += 10000
             self.prev_reward = self.reward
 
-        return self.state_dict, step_reward, done, {}
+        return self.get_state_array(), step_reward, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
@@ -371,11 +371,15 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         s, r, done, info = env.step(a)
-        target = Box2D.b2Vec2(6, 4.5)
-        move = MoveAction(target, s)
+        pos = (s[0], s[1])
+        vel = (s[2], s[3])
+        target = (6, 4.5)
+        move = MoveAction(target, pos, vel)
         while True:
             s, r, done, info = env.step(a)
-            a = move.MoveTo(s, a)
+            pos = (s[0], s[1])
+            vel = (s[2], s[3])
+            a = move.MoveTo(pos, vel, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

@@ -143,7 +143,7 @@ agent = DQNAgent()
 device = agent.device
 episode_durations = []
 
-num_episodes = 50
+num_episodes = 5000
 for i_episode in range(num_episodes):
     print("Epoch: {}".format(i_episode))
     # Initialize the environment and state
