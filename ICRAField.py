@@ -129,9 +129,13 @@ class ICRAField(gym.Env, EzPickle):
 
 
     def collision_step(self):
+        collision_bullet_bullet = self.contactListener_keepref.collision_bullet_bullet
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
         collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
+        for bullet1, bullet2 in collision_bullet_bullet:
+            self.bullets.destroyById(bullet1)
+            self.bullets.destroyById(bullet2)
         for bullet, robot in collision_bullet_robot:
             self.bullets.destroyById(bullet)
             if(self.robots[robot].buffLeftTime) > 0:
@@ -164,8 +168,9 @@ class ICRAField(gym.Env, EzPickle):
 
     def detect_step(self, robot_id):
         detected = {}
-        for i in range(-60, 60, 5):
-            angle, pos = self.robots[robot_id].getGunAnglePos()
+        for i in range(-170, 170, 5):
+            angle, pos = self.robots[robot_id].getAnglePos()
+            angle += math.pi/2
             angle += i/180*math.pi
             p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
@@ -194,8 +199,13 @@ class ICRAField(gym.Env, EzPickle):
         self.actions[robot_id] = action
 
     def step(self, action):
-        self.set_action("robot_0", action)
+        ###### observe ######
+        for robot_name in self.robots.keys():
+            self.detect_step(robot_name)
+            self.update_robot_state(robot_name)
+
         ###### action ######
+        self.set_action("robot_0", action)
         for robot_name in self.robots.keys():
             action = self.actions[robot_name]
             if action is not None:
@@ -203,11 +213,6 @@ class ICRAField(gym.Env, EzPickle):
             self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
-
-        ###### observe ######
-        for robot_name in self.robots.keys():
-            self.detect_step(robot_name)
-            self.update_robot_state(robot_name)
 
         ###### Referee ######
         self.collision_step()
@@ -399,7 +404,7 @@ if __name__ == "__main__":
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
-            a = move.MoveTo(pos, vel, a)
+            #a = move.MoveTo(pos, vel, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

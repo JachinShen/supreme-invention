@@ -31,7 +31,10 @@ WHEEL_POLY = [
     ]
 WHEEL_COLOR = (0.0,0.0,0.0)
 
-GUN_BOX = (20*SIZE, 130*SIZE)
+GUN_POLY =[
+    (-20,+260), (+20,+260),
+    (+20,-0), (-20,-0)
+    ]
 
 BULLETS_ADDED_ONE_TIME = 50
 
@@ -89,7 +92,7 @@ class Robot:
             angle = 0,
             fixtures = [
                 fixtureDef(
-                    shape = polygonShape(box=GUN_BOX), 
+                    shape = polygonShape(vertices=[ (x*SIZE,y*SIZE) for x,y in GUN_POLY ]),
                     maskBits=0x00, density=0.01, userData=userData)
             ]
         )
@@ -97,13 +100,13 @@ class Robot:
             bodyA=self.hull,
             bodyB=self.gun,
             localAnchorA=(0,0),
-            localAnchorB=(0,-GUN_BOX[1]),
+            localAnchorB=(0,0),
             enableMotor=True,
-            enableLimit=True,
+            enableLimit=False,
             maxMotorTorque=180*900*SIZE*SIZE,
             motorSpeed = 0.0,
-            lowerAngle = -math.pi/2,
-            upperAngle = +math.pi/2,
+            #lowerAngle = -math.pi,
+            #upperAngle = +math.pi,
         ))
         self.gun.color = (0.1, 0.1, 0.1)
         self.gun.angle = init_angle
@@ -146,6 +149,9 @@ class Robot:
     def getGunAnglePos(self):
         return self.gun.angle+math.pi/2, self.gun.position
     
+    def getAnglePos(self):
+        return self.hull.angle, self.hull.position
+
     def getPos(self):
         return self.hull.position
 

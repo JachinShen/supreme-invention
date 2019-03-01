@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from ICRAField import ICRAField
 from SupportAlgorithm.MoveAction import MoveAction
 from DQN import DQN
 
@@ -64,7 +63,7 @@ class DQNAgent():
     def select_action(self, state):
         device = self.device
         action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        if state[5] > 0:
+        if state[-1] > 0 and state[-3] > 0:
             action[4] = +1.0
         else:
             action[4] = 0.0

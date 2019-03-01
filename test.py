@@ -9,10 +9,11 @@ from itertools import count
 
 from ICRAField import ICRAField
 from DQNAgent import DQNAgent
+from HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
-seed = 233
+seed = 124
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
@@ -20,6 +21,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
+agent2 = HandAgent()
 agent.load()
 device = agent.device
 episode_durations = []
@@ -30,16 +32,18 @@ for i_episode in range(num_episodes):
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     env.reset()
+    agent2.reset()
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         if t % (60*30) == 0:
-            print("Simulation in minute: {}".format(t//(60*30)))
+            print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
+        env.set_action("robot_1", agent2.select_action(env.get_state_array("robot_1")))
         # Select and perform an action
         if state[5] > 0:
             action[4] = +1.0
         else:
             action[4] = 0.0
-        action = agent.select_action(state, action)
+        action = agent.select_action(state)
 
         next_state, reward, done, info = env.step(action)
 

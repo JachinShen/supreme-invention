@@ -9,6 +9,7 @@ from itertools import count
 
 from ICRAField import ICRAField
 from DQNAgent import DQNAgent
+from HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
@@ -20,7 +21,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
-agent2 = DQNAgent()
+agent2 = HandAgent()
 episode_durations = []
 
 num_episodes = 5000
@@ -30,7 +31,7 @@ for i_episode in range(num_episodes):
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     env.reset()
     state, reward, done, info = env.step(action)
-    for t in range(7*60*30):
+    for t in range(2*60*30):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
         # Other agent
