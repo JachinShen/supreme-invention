@@ -61,8 +61,14 @@ class DQNAgent():
 
         self.steps_done = 0
 
-    def select_action(self, state, action):
+    def select_action(self, state):
         device = self.device
+        action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        if state[5] > 0:
+            action[4] = +1.0
+        else:
+            action[4] = 0.0
+
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         state = torch.tensor(state).to(device).unsqueeze(0).double()
@@ -73,14 +79,14 @@ class DQNAgent():
         self.steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
-                value_map = self.policy_net(state)[0]
+                value_map = self.policy_net(state)[0][0]
                 col_max, col_max_indice = value_map.max(dim=0)
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
                 y = max_col_max_indice.item()
                 x = col_max_indice[y].item()
-                self.target = (x/2.0, y/2.0)
+                self.target = (x/9.0*8.0), (y/9.0*5.0)
         else:
-            self.target = (random.random(), random.random())
+            self.target = (random.random()*8.0, random.random()*5.0)
 
         move = MoveAction(self.target, pos, vel)
         action = move.MoveTo(pos, vel, action)

@@ -20,6 +20,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
+agent2 = DQNAgent()
 episode_durations = []
 
 num_episodes = 5000
@@ -31,14 +32,13 @@ for i_episode in range(num_episodes):
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         if t % (60*30) == 0:
-            print("Simulation in minute: [{}/{}]".format(t//(60*30)+1, 7))
+            print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
+        # Other agent
+        env.set_action("robot_1", agent2.select_action(env.get_state_array("robot_1")))
         # Select and perform an action
-        if state[5] > 0:
-            action[4] = +1.0
-        else:
-            action[4] = 0.0
-        action = agent.select_action(state, action)
+        action = agent.select_action(state)
 
+        # Step
         next_state, reward, done, info = env.step(action)
 
         # Store the transition in memory
@@ -48,11 +48,11 @@ for i_episode in range(num_episodes):
         # Perform one step of the optimization (on the target network)
         agent.optimize_model()
         if done:
+            print("Simulation end in: {}:{:02d}, reward: {}".format(t//(60*30), t%(60*30)//30, reward))
             episode_durations.append(t + 1)
             break
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
-        print("Last reward: {}".format(reward))
         agent.update_target_net()
         agent.save()
 

@@ -35,6 +35,8 @@ ZOOM = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
 SCAN_RANGE = 5
+COLOR_RED = (0.8,0.0,0.0)
+COLOR_BLUE = (0.0, 0.0, 0.8)
 
 class ICRAField(gym.Env, EzPickle):
     metadata = {
@@ -61,23 +63,8 @@ class ICRAField(gym.Env, EzPickle):
 
         self.reward = 0.0
         self.prev_reward = 0.0
-        # gas, rotate, transverse, rotate cloud terrance, shoot
-        #self.action_space = spaces.Box(
-            #np.array([-1, -1, -1, -1, 0]),
-            #np.array([+1, -1, +1, +1, +1]), dtype=np.float32)
-        # pos(x,y) x2, health
-        #self.observation_space = spaces.Box(
-            #np.array([-1, -1, -1, -1, -1]),
-            #np.array([+10, +10, +10, +10, +1000]), dtype=np.float32)
-        self.state_dict = {"pos": (-1, -1), "angle": -1, "robot_1": (-1, -1), "health": -1, "velocity": (0, 0)}
-
-    def get_state_array(self):
-        pos = self.state_dict["pos"]
-        velocity = self.state_dict["velocity"]
-        angle = self.state_dict["angle"]
-        health = self.state_dict["health"]
-        robot_1 = self.state_dict["robot_1"]
-        return [pos[0], pos[1], velocity[0], velocity[1], angle, robot_1[0], robot_1[1]]
+        self.state_dict = {}
+        self.actions = {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -104,20 +91,42 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
 
 
-        # for robot_name, x in zip(["robot_0", "robot_1"], [0.5, 6.5]):
-        #     self.robots[robot_name] = Robot(
-        #          self.world, -np.pi/2, x, 4.5, robot_name, 0, 'red')
-        red_color = (0.8,0.0,0.0)
-        blue_color = (0.0, 0.0, 0.8)
-        self.robots['robot_0'] = Robot(self.world, -np.pi/2, 0.5, 4.5, 'robot_0', 0, 'red', red_color)
-        self.robots['robot_1'] = Robot(self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(), 'robot_1', 1, 'blue', blue_color)
+        self.robots['robot_0'] = Robot(
+            self.world, -np.pi/2, 0.5, 4.5,
+            'robot_0', 0, 'red', COLOR_RED)
+        self.robots['robot_1'] = Robot(
+            self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(),
+            'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
         self.supply_areas = SupplyAreas()
 
+        self.state_dict["robot_0"] = {
+            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0),
+            "robot_0": (-1, -1), "robot_1": (-1, -1)
+        }
+        self.state_dict["robot_1"] = {
+            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0),
+            "robot_0": (-1, -1), "robot_1": (-1, -1)
+        }
+        self.actions["robot_0"] = None
+        self.actions["robot_1"] = None
+
         return self.step(None)[0]
+
+    def get_state_array(self, robot_id):
+        robot_state = self.state_dict[robot_id]
+        pos = robot_state["pos"]
+        velocity = robot_state["velocity"]
+        angle = robot_state["angle"]
+        health = robot_state["health"]
+        robot_0 = robot_state["robot_0"]
+        robot_1 = robot_state["robot_1"]
+        return [pos[0], pos[1], velocity[0], velocity[1], angle,
+            robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
+
 
     def collision_step(self):
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
@@ -153,11 +162,10 @@ class ICRAField(gym.Env, EzPickle):
                 self.bullets.shoot(init_angle, init_pos)
                 self.robots[robot_name].bullets_num -= 1
 
-    def detect_step(self):
+    def detect_step(self, robot_id):
         detected = {}
-        # self.robots["robot_0"].setCloudTerrance(1)
         for i in range(-60, 60, 5):
-            angle, pos = self.robots["robot_0"].getGunAnglePos()
+            angle, pos = self.robots[robot_id].getGunAnglePos()
             angle += i/180*math.pi
             p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
@@ -166,38 +174,49 @@ class ICRAField(gym.Env, EzPickle):
             if u in self.robots.keys():
                 if u not in detected.keys():
                     p = detected[u] = self.detect_callback.point
-                    pos = self.robots["robot_0"].getPos()
+                    pos = self.robots[robot_id].getPos()
                     p = (p[0] - pos[0], p[1] - pos[1])
                     angle = math.atan2(p[1], p[0])
-                    self.robots["robot_0"].setCloudTerrance(angle)
-
+                    # Auto shoot
+                    self.robots[robot_id].setCloudTerrance(angle)
 
         for robot_name in self.robots.keys():
-            if robot_name in detected.keys():
-                self.state_dict[robot_name] = detected[robot_name]
-            else:
-                self.state_dict[robot_name] = (-1, -1)
+            self.state_dict[robot_id][robot_name] = detected[robot_name] if robot_name in detected.keys() else (-1, -1)
+
+    def update_robot_state(self, robot_id):
+        self.state_dict[robot_id][robot_id] = self.robots[robot_id].getPos()
+        self.state_dict[robot_id]["health"] = self.robots[robot_id].health
+        self.state_dict[robot_id]["pos"] = self.robots[robot_id].getPos()
+        self.state_dict[robot_id]["angle"] = self.robots[robot_id].getAngle()
+        self.state_dict[robot_id]["velocity"] = self.robots[robot_id].getVelocity()
+
+    def set_action(self, robot_id, action):
+        self.actions[robot_id] = action
 
     def step(self, action):
-        self.collision_step()
-        self.detect_step()
-        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
-        if action is not None:
-            self.action_step("robot_0", action)
-
+        self.set_action("robot_0", action)
+        ###### action ######
         for robot_name in self.robots.keys():
+            action = self.actions[robot_name]
+            if action is not None:
+                self.action_step(robot_name, action)
             self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state_dict["health"] = self.robots["robot_0"].health
-        self.state_dict["pos"] = self.robots["robot_0"].getPos()
-        self.state_dict["angle"] = self.robots["robot_0"].getAngle()
-        self.state_dict["velocity"] = self.robots["robot_0"].getVelocity()
+        ###### observe ######
+        for robot_name in self.robots.keys():
+            self.detect_step(robot_name)
+            self.update_robot_state(robot_name)
 
+        ###### Referee ######
+        self.collision_step()
+        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
+
+        ###### reward ######
         step_reward = 0
         done = False
-        if action is not None:  # First step without action, called from reset()
+        if self.actions["robot_0"] is not None:  # First step without action, called from reset()
             self.reward = self.robots["robot_0"].health - self.robots["robot_1"].health
             self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
@@ -209,7 +228,7 @@ class ICRAField(gym.Env, EzPickle):
                 step_reward += 10000
             self.prev_reward = self.reward
 
-        return self.get_state_array(), step_reward, done, {}
+        return self.get_state_array("robot_0"), step_reward, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
