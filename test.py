@@ -8,8 +8,8 @@ from collections import namedtuple
 from itertools import count
 
 from ICRAField import ICRAField
-from DQNAgent import DQNAgent
-from HandAgent import HandAgent
+from Agent.DQNAgent import DQNAgent
+from Agent.HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
@@ -37,7 +37,8 @@ for i_episode in range(num_episodes):
     for t in range(7*60*30):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
-        env.set_action("robot_1", agent2.select_action(env.get_state_array("robot_1")))
+        env.setRobotAction("robot_1", agent2.select_action(
+            env.getStateArray("robot_1")))
         # Select and perform an action
         if state[5] > 0:
             action[4] = +1.0

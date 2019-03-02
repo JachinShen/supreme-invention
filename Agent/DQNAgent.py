@@ -14,7 +14,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from SupportAlgorithm.MoveAction import MoveAction
-from DQN import DQN
+from Agent.DQN import DQN
 
 BATCH_SIZE = 128
 GAMMA = 0.999
@@ -22,7 +22,9 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
 
-Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
+Transition = namedtuple(
+    'Transition', ('state', 'action', 'next_state', 'reward'))
+
 
 class ReplayMemory(object):
 
@@ -43,6 +45,7 @@ class ReplayMemory(object):
 
     def __len__(self):
         return len(self.memory)
+
 
 class DQNAgent():
     def __init__(self):
@@ -98,7 +101,6 @@ class DQNAgent():
         reward = torch.tensor([reward], device=device).double()
         self.memory.push(self.state, target, next_state, reward)
 
-
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
             return
@@ -112,9 +114,9 @@ class DQNAgent():
         # Compute a mask of non-final states and concatenate the batch elements
         # (a final state would've been the one after which simulation ended)
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                            batch.next_state)), device=device, dtype=torch.uint8)
+                                                batch.next_state)), device=device, dtype=torch.uint8)
         non_final_next_states = torch.cat([s for s in batch.next_state
-                                                    if s is not None])
+                                           if s is not None])
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
@@ -123,7 +125,8 @@ class DQNAgent():
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
         state_action_values = self.policy_net(state_batch)
-        state_action_values = state_action_values.reshape([BATCH_SIZE, -1]).max(dim=1)[0]
+        state_action_values = state_action_values.reshape(
+            [BATCH_SIZE, -1]).max(dim=1)[0]
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -135,10 +138,12 @@ class DQNAgent():
         value = value.reshape([BATCH_SIZE, -1]).max(dim=1)[0].detach()
         next_state_values[non_final_mask] = value
         # Compute the expected Q values
-        expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+        expected_state_action_values = (
+            next_state_values * GAMMA) + reward_batch
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+        loss = F.smooth_l1_loss(state_action_values,
+                                expected_state_action_values)
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -154,5 +159,6 @@ class DQNAgent():
         torch.save(self.policy_net.state_dict(), "ICRA.model")
 
     def load(self):
-        self.policy_net.load_state_dict(torch.load("ICRA.model", map_location=self.device))
+        self.policy_net.load_state_dict(torch.load(
+            "ICRA.model", map_location=self.device))
         self.target_net.load_state_dict(self.policy_net.state_dict())

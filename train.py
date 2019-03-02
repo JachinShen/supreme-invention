@@ -8,8 +8,8 @@ from collections import namedtuple
 from itertools import count
 
 from ICRAField import ICRAField
-from DQNAgent import DQNAgent
-from HandAgent import HandAgent
+from Agent.DQNAgent import DQNAgent
+from Agent.HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
@@ -35,7 +35,8 @@ for i_episode in range(num_episodes):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
         # Other agent
-        env.set_action("robot_1", agent2.select_action(env.get_state_array("robot_1")))
+        env.setRobotAction("robot_1", agent2.select_action(
+            env.getStateArray("robot_1")))
         # Select and perform an action
         action = agent.select_action(state)
 
@@ -49,7 +50,8 @@ for i_episode in range(num_episodes):
         # Perform one step of the optimization (on the target network)
         agent.optimize_model()
         if done:
-            print("Simulation end in: {}:{:02d}, reward: {}".format(t//(60*30), t%(60*30)//30, reward))
+            print("Simulation end in: {}:{:02d}, reward: {}".format(
+                t//(60*30), t % (60*30)//30, reward))
             episode_durations.append(t + 1)
             break
     # Update the target network, copying all weights and biases in DQN

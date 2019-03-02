@@ -1,10 +1,10 @@
 from Box2D.b2 import contactListener
 
+
 class ICRAContactListener(contactListener):
     def __init__(self, env):
         contactListener.__init__(self)
         self.env = env
-        self.collision_bullet_bullet = []
         self.collision_bullet_robot = []
         self.collision_bullet_wall = []
         self.collision_robot_wall = []
@@ -23,8 +23,6 @@ class ICRAContactListener(contactListener):
             return
         u1_type = u1.split("_")[0]
         u2_type = u2.split("_")[0]
-        if u1_type == "bullet" and u2_type == "bullet":
-            self.collision_bullet_bullet.append((u1, u2))
         if u1_type == "bullet" and u2_type == "robot":
             self.collision_bullet_robot.append((u1, u2))
         if u2_type == "bullet" and u1_type == "robot":

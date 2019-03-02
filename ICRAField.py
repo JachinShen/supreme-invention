@@ -35,12 +35,13 @@ ZOOM = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
 SCAN_RANGE = 5
-COLOR_RED = (0.8,0.0,0.0)
+COLOR_RED = (0.8, 0.0, 0.0)
 COLOR_BLUE = (0.0, 0.0, 0.8)
+
 
 class ICRAField(gym.Env, EzPickle):
     metadata = {
-        #'render.modes': ['human', 'rgb_array', 'state_pixels'],
+        # 'render.modes': ['human', 'rgb_array', 'state_pixels'],
         'render.modes': 'human',
         'video.frames_per_second': FPS
     }
@@ -90,7 +91,6 @@ class ICRAField(gym.Env, EzPickle):
 
         self.robots = {}
 
-
         self.robots['robot_0'] = Robot(
             self.world, -np.pi/2, 0.5, 4.5,
             'robot_0', 0, 'red', COLOR_RED)
@@ -116,7 +116,7 @@ class ICRAField(gym.Env, EzPickle):
 
         return self.step(None)[0]
 
-    def get_state_array(self, robot_id):
+    def getStateArray(self, robot_id):
         robot_state = self.state_dict[robot_id]
         pos = robot_state["pos"]
         velocity = robot_state["velocity"]
@@ -125,17 +125,12 @@ class ICRAField(gym.Env, EzPickle):
         robot_0 = robot_state["robot_0"]
         robot_1 = robot_state["robot_1"]
         return [pos[0], pos[1], velocity[0], velocity[1], angle,
-            robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
+                robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
 
-
-    def collision_step(self):
-        collision_bullet_bullet = self.contactListener_keepref.collision_bullet_bullet
+    def stepCollision(self):
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
         collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
-        for bullet1, bullet2 in collision_bullet_bullet:
-            self.bullets.destroyById(bullet1)
-            self.bullets.destroyById(bullet2)
         for bullet, robot in collision_bullet_robot:
             self.bullets.destroyById(bullet)
             if(self.robots[robot].buffLeftTime) > 0:
@@ -148,7 +143,7 @@ class ICRAField(gym.Env, EzPickle):
             self.robots[robot].loseHealth(10)
         self.contactListener_keepref.clean()
 
-    def action_step(self, robot_name, action):
+    def stepAction(self, robot_name, action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
         self.robots[robot_name].moveAheadBack(action[0])
         self.robots[robot_name].turnLeftRight(action[1]/2)
@@ -166,14 +161,15 @@ class ICRAField(gym.Env, EzPickle):
                 self.bullets.shoot(init_angle, init_pos)
                 self.robots[robot_name].bullets_num -= 1
 
-    def detect_step(self, robot_id):
+    def detectEnemy(self, robot_id):
         detected = {}
         for i in range(-170, 170, 5):
             angle, pos = self.robots[robot_id].getAnglePos()
             angle += math.pi/2
             angle += i/180*math.pi
             p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
-            p2 = (pos[0] + SCAN_RANGE*math.cos(angle), pos[1] + SCAN_RANGE*math.sin(angle))
+            p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
+                  pos[1] + SCAN_RANGE*math.sin(angle))
             self.world.RayCast(self.detect_callback, p1, p2)
             u = self.detect_callback.userData
             if u in self.robots.keys():
@@ -186,43 +182,47 @@ class ICRAField(gym.Env, EzPickle):
                     self.robots[robot_id].setCloudTerrance(angle)
 
         for robot_name in self.robots.keys():
-            self.state_dict[robot_id][robot_name] = detected[robot_name] if robot_name in detected.keys() else (-1, -1)
+            self.state_dict[robot_id][robot_name] = detected[robot_name] if robot_name in detected.keys(
+            ) else (-1, -1)
 
-    def update_robot_state(self, robot_id):
+    def updateRobotState(self, robot_id):
         self.state_dict[robot_id][robot_id] = self.robots[robot_id].getPos()
         self.state_dict[robot_id]["health"] = self.robots[robot_id].health
         self.state_dict[robot_id]["pos"] = self.robots[robot_id].getPos()
         self.state_dict[robot_id]["angle"] = self.robots[robot_id].getAngle()
         self.state_dict[robot_id]["velocity"] = self.robots[robot_id].getVelocity()
 
-    def set_action(self, robot_id, action):
+    def setRobotAction(self, robot_id, action):
         self.actions[robot_id] = action
 
     def step(self, action):
         ###### observe ######
         for robot_name in self.robots.keys():
-            self.detect_step(robot_name)
-            self.update_robot_state(robot_name)
+            self.detectEnemy(robot_name)
+            self.updateRobotState(robot_name)
 
         ###### action ######
-        self.set_action("robot_0", action)
+        self.setRobotAction("robot_0", action)
         for robot_name in self.robots.keys():
             action = self.actions[robot_name]
             if action is not None:
-                self.action_step(robot_name, action)
+                self.stepAction(robot_name, action)
             self.robots[robot_name].step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
         ###### Referee ######
-        self.collision_step()
-        self.buff_areas.detect([self.robots["robot_0"], self.robots["robot_1"]], self.t)
+        self.stepCollision()
+        self.buff_areas.detect(
+            [self.robots["robot_0"], self.robots["robot_1"]], self.t)
 
         ###### reward ######
         step_reward = 0
         done = False
-        if self.actions["robot_0"] is not None:  # First step without action, called from reset()
-            self.reward = self.robots["robot_0"].health - self.robots["robot_1"].health
+        # First step without action, called from reset()
+        if self.actions["robot_0"] is not None:
+            self.reward = self.robots["robot_0"].health - \
+                self.robots["robot_1"].health
             self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
@@ -233,15 +233,15 @@ class ICRAField(gym.Env, EzPickle):
                 step_reward += 10000
             self.prev_reward = self.reward
 
-        return self.get_state_array("robot_0"), step_reward, done, {}
+        return self.getStateArray("robot_0"), step_reward, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
             self.time_label = pyglet.text.Label('0000', font_size=36,
-                                                 x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
-                                                 color=(255, 255, 255, 255))
+                                                x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
+                                                color=(255, 255, 255, 255))
             self.score_label = pyglet.text.Label('0000', font_size=36,
                                                  x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
                                                  color=(255, 255, 255, 255))
@@ -252,8 +252,8 @@ class ICRAField(gym.Env, EzPickle):
                                                    x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
                                                    color=(255, 255, 255, 255))
             self.buff_stay_time = pyglet.text.Label('0000', font_size=16,
-                                                   x=520, y=WINDOW_H*4.5/40.00, anchor_x='left', anchor_y='center',
-                                                   color=(255, 255, 255, 255))
+                                                    x=520, y=WINDOW_H*4.5/40.00, anchor_x='left', anchor_y='center',
+                                                    color=(255, 255, 255, 255))
             self.buff_left_time = pyglet.text.Label('0000', font_size=16,
                                                     x=520, y=WINDOW_H * 5.5 / 40.00, anchor_x='left', anchor_y='center',
                                                     color=(255, 255, 255, 255))
@@ -341,15 +341,16 @@ class ICRAField(gym.Env, EzPickle):
             self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
         )
         self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.buff_areas.buffAreas[0].maxStayTime),
-                                                                    int(self.buff_areas.buffAreas[1].maxStayTime))
+                                                                              int(self.buff_areas.buffAreas[1].maxStayTime))
         self.buff_left_time.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.robots['robot_0'].buffLeftTime),
-                                                                         int(self.robots['robot_1'].buffLeftTime))
+                                                                              int(self.robots['robot_1'].buffLeftTime))
         self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
         self.bullets_label.draw()
         self.buff_stay_time.draw()
         self.buff_left_time.draw()
+
 
 if __name__ == "__main__":
     from pyglet.window import key
@@ -358,30 +359,52 @@ if __name__ == "__main__":
 
     def key_press(k, mod):
         global restart
-        if k == key.ESCAPE: restart = True
-        if k == key.W: a[0] = +1.0
-        if k == key.S: a[0] = -1.0
-        if k == key.Q: a[1] = +1.0
-        if k == key.E: a[1] = -1.0
-        if k == key.D: a[2] = +1.0
-        if k == key.A: a[2] = -1.0
-        if k == key.Z: a[3] = +1.0
-        if k == key.C: a[3] = -1.0
-        if k == key.SPACE: a[4] = +1.0
-        if k == key.R: a[5] = +1.0
+        if k == key.ESCAPE:
+            restart = True
+        if k == key.W:
+            a[0] = +1.0
+        if k == key.S:
+            a[0] = -1.0
+        if k == key.Q:
+            a[1] = +1.0
+        if k == key.E:
+            a[1] = -1.0
+        if k == key.D:
+            a[2] = +1.0
+        if k == key.A:
+            a[2] = -1.0
+        if k == key.Z:
+            a[3] = +1.0
+        if k == key.C:
+            a[3] = -1.0
+        if k == key.SPACE:
+            a[4] = +1.0
+        if k == key.R:
+            a[5] = +1.0
 
     def key_release(k, mod):
-        if k == key.ESCAPE: restart = True
-        if k == key.W: a[0] = +0.0
-        if k == key.S: a[0] = -0.0
-        if k == key.Q: a[1] = +0.0
-        if k == key.E: a[1] = -0.0
-        if k == key.D: a[2] = +0.0
-        if k == key.A: a[2] = -0.0
-        if k == key.Z: a[3] = +0.0
-        if k == key.C: a[3] = -0.0
-        if k == key.SPACE: a[4] = +0.0
-        if k == key.R: a[5] = +0.0
+        if k == key.ESCAPE:
+            restart = True
+        if k == key.W:
+            a[0] = +0.0
+        if k == key.S:
+            a[0] = -0.0
+        if k == key.Q:
+            a[1] = +0.0
+        if k == key.E:
+            a[1] = -0.0
+        if k == key.D:
+            a[2] = +0.0
+        if k == key.A:
+            a[2] = -0.0
+        if k == key.Z:
+            a[3] = +0.0
+        if k == key.C:
+            a[3] = -0.0
+        if k == key.SPACE:
+            a[4] = +0.0
+        if k == key.R:
+            a[5] = +0.0
 
     env = ICRAField()
     env.render()
@@ -409,9 +432,9 @@ if __name__ == "__main__":
             total_reward += r
 
             if steps % 200 == 0 or done:
-            #     print("state: {}".format(s))
-            #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
-                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
+                #     print("state: {}".format(s))
+                #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
+                print("step {} total_reward {:+0.2f}".format(steps, total_reward))
             steps += 1
             # Faster, but you can as well call env.render() every time to play full window.
             if not record_video:
