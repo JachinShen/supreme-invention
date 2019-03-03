@@ -1,17 +1,17 @@
-BUFFAREABOX_RED = (5.8, 1.25, 1.0, 1.0) #(x, y, w, h)
+BUFFAREABOX_RED = (5.8, 1.25, 1.0, 1.0)  # (x, y, w, h)
 BUFFAREABOX_BLUE = (1.2, 2.75, 1.0, 1.0)
 
-COLOR_RED = (1.0, 0, 0, 1.0)
-COLOR_BLUE = (0, 0, 1.0, 1.0)
+COLOR_RED = (0.9, 0.4, 0.4, 1.0)
+COLOR_BLUE = (0.4, 0.4, 9.0, 1.0)
 
 FPS = 30
 
 
 class AllBuffArea(object):
     def __init__(self):
-        #Time that a robot needs to stay in a buff area to activate defentive buff
+        # Time that a robot needs to stay in a buff area to activate defentive buff
         self.triggerTime = 5
-        #Time of defentive buff
+        # Time of defentive buff
         self.maxBuffLeftTime = 30
         self.buffAreas = [BuffArea(BUFFAREABOX_RED, 'red', COLOR_RED, self.maxBuffLeftTime, self.triggerTime),
                           BuffArea(BUFFAREABOX_BLUE, 'blue', COLOR_BLUE, self.maxBuffLeftTime, self.triggerTime)]
@@ -31,20 +31,22 @@ class AllBuffArea(object):
         for buff in self.buffAreas:
             buff.render(gl)
 
+
 class BuffArea(object):
     def __init__(self, box, group, color, maxBuffLeftTime, triggerTime):
         self.box = box
         self.stayTime = {}
         self.maxStayTime = 0.0
         self.group = group
-        self.color  = color
+        self.color = color
         self.maxBuffLeftTime = maxBuffLeftTime
         self.triggerTime = triggerTime
         self.preTime = 0.0
-        self.activated = False # True: The buff area has been activated and keep invalid until next minute
+        # True: The buff area has been activated and keep invalid until next minute
+        self.activated = False
 
     def detect(self, objects, curTime):
-        #0, 1, 2min refresh
+        # 0, 1, 2min refresh
         if(int(curTime * FPS) % (60 * FPS) == 0):
             self.activated = False
             self.stayTime = {}
@@ -83,11 +85,11 @@ class BuffArea(object):
 
     def render(self, gl):
         gl.glBegin(gl.GL_QUADS)
-        gl.glColor4f(self.color[0], self.color[1], self.color[2], self.color[3])
+        gl.glColor4f(self.color[0], self.color[1],
+                     self.color[2], self.color[3])
         x, y, w, h = self.box
         gl.glVertex3f(x, y, 0)
         gl.glVertex3f(x + w, y, 0)
         gl.glVertex3f(x + w, y + h, 0)
         gl.glVertex3f(x, y + h, 0)
         gl.glEnd()
-

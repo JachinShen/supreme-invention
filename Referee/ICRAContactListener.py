@@ -1,5 +1,6 @@
 from Box2D.b2 import contactListener
 
+
 class ICRAContactListener(contactListener):
     def __init__(self, env):
         contactListener.__init__(self)
