@@ -1,11 +1,11 @@
 import numpy as np
 import math
 import Box2D
-from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape)
+from Box2D.b2 import (fixtureDef, polygonShape, )
 
 SIZE = 0.001
-
 BULLET_BOX = (40*SIZE, 10*SIZE)
+
 
 class Bullet:
     def __init__(self, world):
@@ -16,15 +16,17 @@ class Bullet:
     def shoot(self, init_angle, init_pos):
         angle = init_angle
         x, y = init_pos
-        x += math.cos(angle) * 0.3
-        y += math.sin(angle) * 0.3
+        x += math.cos(angle) * 0.35
+        y += math.sin(angle) * 0.35
         bullet = self.world.CreateDynamicBody(
-            position = (x, y),
-            angle = angle,
-            fixtures = [
+            position=(x, y),
+            angle=angle,
+            fixtures=[
                 fixtureDef(
-                    shape = polygonShape(box=BULLET_BOX), 
-                    density=0.1)
+                    shape=polygonShape(box=BULLET_BOX),
+                    categoryBits=0x02,
+                    maskBits=0xFD,
+                    density=1e-6)
             ]
         )
         bullet.color = (0.0, 0.0, 0.0)
@@ -49,4 +51,3 @@ class Bullet:
         for bullet in self.bullets.values():
             self.world.DestroyBody(bullet)
         self.bullets = {}
-    

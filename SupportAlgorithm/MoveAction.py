@@ -3,6 +3,7 @@ import math
 import numpy as np
 
 import sys
+import Box2D
 
 sys.path.append("..")
 from SupportAlgorithm.Astar import astar, pathprocess
@@ -17,18 +18,23 @@ ACC = 1.0
 
 
 class MoveAction:
-    def __init__(self, target, observation):
+    def __init__(self, target, pos, vel):
+        target = Box2D.b2Vec2(target[0], target[1])
+        pos = Box2D.b2Vec2(pos[0], pos[1])
+        vel = Box2D.b2Vec2(vel[0], vel[1])
         self.index = 0
         DUNGEON = map2grid(WIDTH, HEIGHT)
         self.target_grid = world2grid(target)
-        self.selfpos_gird = world2grid(observation["pos"])
+        self.selfpos_gird = world2grid(pos)
         self.path = pathprocess(astar(DUNGEON, WIDTH, HEIGHT, self.selfpos_gird, 0, self.target_grid))
         self.tonext = 1000
-        self.velocity = observation["velocity"]
+        self.velocity = vel
 
-    def MoveTo(self, observation, action):
-        selfpos = observation["pos"]
-        self.velocity = observation["velocity"]
+    def MoveTo(self, pos, vel, action):
+        pos = Box2D.b2Vec2(pos[0], pos[1])
+        vel = Box2D.b2Vec2(vel[0], vel[1])
+        selfpos = pos
+        self.velocity = vel
         if self.index + 1 < self.path.__len__():
             nexttarget = grid2world(self.path[self.index + 1])
             self.tonext = self.dist(selfpos, nexttarget)
