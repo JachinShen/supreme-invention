@@ -3,15 +3,17 @@ import Box2D
 sys.path.append("..")
 import random
 from Referee.ICRAMap import BORDER_POS, BORDER_BOX
+from Objects.Robot import ROBOT_SIZE,SIZE
 
 BORDER_POS = [(-0.1, 2.5), (4, -0.1), (4, 5.1), (8.1, 2.5), (1.525, 1.9), (3.375, 0.5), (6.475, 3.1), (4.625, 4.5),
               (1.7, 3.875), (4, 2.5), (6.3, 1.125)]
 BORDER_BOX = [(0.1, 2.5), (4, 0.1), (4, 0.1), (0.1, 2.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
               (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
-MAXSCALE = 10
+MAXSCALE = 20
+
 BIAS = 0.5
-BODYSIZE = 0.43
+BODYSIZE = SIZE*ROBOT_SIZE*1.4
 
 class Cell(object):
 
@@ -104,16 +106,17 @@ def view_path(str, path, width):
 
     return str
 
-
+BIASX = 3
+BIASY = 0
 def grid2world(path):
-    cood = Box2D.b2Vec2((float(path[1] + 1)) / MAXSCALE - BIAS,
-                        (float(path[0])) / MAXSCALE - BIAS)
+    cood = Box2D.b2Vec2((float(path[1] + BIASX)) / MAXSCALE - BIAS,
+                        (float(path[0]) + BIASY) / MAXSCALE - BIAS)
     return cood
 
 
 def world2grid(cood):
-    path = (int(MAXSCALE * BIAS) + int(MAXSCALE * cood.y),
-            int(MAXSCALE * BIAS) + int(MAXSCALE * cood.x) - 1)
+    path = (int(MAXSCALE * BIAS + MAXSCALE * cood.y) - BIASY,
+            int(MAXSCALE * BIAS + MAXSCALE * cood.x) - BIASX)
 
     return path
 
@@ -121,8 +124,8 @@ def world2grid(cood):
 if __name__ == '__main__':
     import random
 
-    width = 250
-    height = 58
+    width = 500
+    height = 116
     str = map2grid(width, height)
     print(str)
     mylen = str.__len__()
