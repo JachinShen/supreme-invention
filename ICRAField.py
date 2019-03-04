@@ -120,6 +120,7 @@ class ICRAField(gym.Env, EzPickle):
         robot_state = self.state_dict[robot_id]
         pos = robot_state["pos"]
         velocity = robot_state["velocity"]
+        velocity = robot_state["velocity"]
         angle = robot_state["angle"]
         health = robot_state["health"]
         robot_0 = robot_state["robot_0"]
@@ -146,7 +147,7 @@ class ICRAField(gym.Env, EzPickle):
     def stepAction(self, robot_name, action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
         self.robots[robot_name].moveAheadBack(action[0])
-        self.robots[robot_name].turnLeftRight(action[1]/2)
+        self.robots[robot_name].turnLeftRight(action[1])
         self.robots[robot_name].moveTransverse(action[2])
         self.robots[robot_name].rotateCloudTerrance(action[3])
         #print(int(self.t * FPS) % (60 * FPS))
@@ -421,13 +422,15 @@ if __name__ == "__main__":
         s, r, done, info = env.step(a)
         pos = (s[0], s[1])
         vel = (s[2], s[3])
-        target = (6, 4.5)
-        move = MoveAction(target, pos, vel)
+        ang = s[4]
+        target = (9, 0)   # origin (0.5, 4.5)
+        move = MoveAction(target, pos, vel, ang)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
-            #a = move.MoveTo(pos, vel, a)
+            ang = s[4]
+            a = move.MoveTo(pos, vel, ang, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

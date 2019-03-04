@@ -9,16 +9,16 @@ sys.path.append("..")
 from SupportAlgorithm.Astar import astar, pathprocess
 from util.Grid import map2grid, view_path, grid2world, world2grid
 
-WIDTH = 100
-HEIGHT = 60
-MINBIAS = 0.2
+WIDTH = 200
+HEIGHT = 120
+MINBIAS = 0.03
 
-MAXVELOCITY = 0.8
-ACC = 1.0
+MAXVELOCITY =1000
+ACC = 1
 
 
 class MoveAction:
-    def __init__(self, target, pos, vel):
+    def __init__(self, target, pos, vel, ang):
         target = Box2D.b2Vec2(target[0], target[1])
         pos = Box2D.b2Vec2(pos[0], pos[1])
         vel = Box2D.b2Vec2(vel[0], vel[1])
@@ -30,49 +30,61 @@ class MoveAction:
         self.tonext = 1000
         self.velocity = vel
 
-    def MoveTo(self, pos, vel, action):
+    def MoveTo(self, pos, vel, ang, action):
         pos = Box2D.b2Vec2(pos[0], pos[1])
         vel = Box2D.b2Vec2(vel[0], vel[1])
         selfpos = pos
         self.velocity = vel
-        if self.index + 1 < self.path.__len__():
-            nexttarget = grid2world(self.path[self.index + 1])
+        if self.index  < self.path.__len__():
+            nexttarget = grid2world(self.path[self.index])
             self.tonext = self.dist(selfpos, nexttarget)
-            if self.tonext < MINBIAS:
+            print(self.tonext)
+            if self.tonext < 1.414 * MINBIAS:
                 self.index += 1
+                action[0] = +0.0
+                action[2] = +0.0
             else:
-                action = self.MoveSubTo(nexttarget, selfpos, self.velocity, action)
+                action = self.MoveSubTo(nexttarget, selfpos, self.velocity, ang, action)
 
         return action
 
-    def MoveSubTo(self, target, selfpos, velocity, action):
+    def MoveSubTo(self, target, selfpos, velocity, ang, action):
         distance = np.sqrt(np.square(target.x - selfpos.x) + np.square(target.y - selfpos.y))
         delta = target - selfpos
+        ang = np.pi/2 + ang
+        vx = velocity.x * np.cos(ang) - velocity.y * np.sin(ang)
+        vy = velocity.x * np.sin(ang) + velocity.y * np.cos(ang)
+        #print('vy', vy)
+        dx = delta.x
+        dy = delta.y
+        #print(delta)
         decelerate = 0.5 * np.square(MAXVELOCITY) / ACC
-
-        if distance < MINBIAS or abs(velocity.x) >= MAXVELOCITY or abs(velocity.y) >= MAXVELOCITY:
+        if distance < 1.414 * MINBIAS:
             action[0] = +0.0
             action[2] = +0.0
         else:
-            if distance < decelerate and abs(velocity.x) >= MAXVELOCITY:
-                if velocity.x > 0:
-                    action[0] = -ACC
-                elif velocity.x < 0:
-                    action[0] = ACC
-            if distance < decelerate and abs(velocity.y) >= MAXVELOCITY:
-                if velocity.y > 0:
-                    action[2] = -ACC
-                elif velocity.y < 0:
-                    action[2] = ACC
-            if delta.x > MINBIAS:
+            if dx > MINBIAS:
                 action[0] = +ACC
-            elif delta.x < -MINBIAS:
+            elif dx < -MINBIAS:
                 action[0] = -ACC
-            if delta.y > MINBIAS:
+            else:
+                action[0] = 0
+            if dy > MINBIAS:
                 action[2] = -ACC
-            elif delta.y < -MINBIAS:
+            elif dy < -MINBIAS:
                 action[2] = +ACC
+            else:
+                action[2] = 0
+        if vx > MAXVELOCITY:
+             action[0] = 0
+        if vy > MAXVELOCITY:
+             action[2] = 0
+        ax = action[0]
+        ay = action[2]
 
+        action[0] = ax * np.cos(ang) - ay * np.sin(ang)
+        action[2] = ax * np.sin(ang) + ay * np.cos(ang)
+        #print('ay', action[2])
         return action
 
     def dist(self, selfpos, target):
