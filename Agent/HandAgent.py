@@ -25,7 +25,7 @@ class HandAgent():
             action[4] = 0.0
             if self.move is None or ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 1):
                 self.target = (random.random()*8.0, random.random()*5.0)
-                print(self.target)
+                #print(self.target)
                 self.move = MoveAction(self.target, pos, vel)
 
         new_action = self.move.MoveTo(pos, vel, action)

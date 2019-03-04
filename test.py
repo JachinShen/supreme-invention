@@ -13,7 +13,7 @@ from Agent.HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
-seed = 124
+seed = 14 
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
