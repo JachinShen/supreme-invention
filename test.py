@@ -54,6 +54,7 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
+            agent2.reset()
             break
 
 env.close()
