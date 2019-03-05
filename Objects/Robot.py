@@ -54,7 +54,7 @@ class Robot:
             angle=0,
             fixtures=[
                 fixtureDef(shape=polygonShape(vertices=[(x*SIZE, y*SIZE) for x, y in HULL_POLY]),
-                           density=1.0, restitution=1, userData=userData),
+                           density=1.0, restitution=1, userData=userData, friction=1),
             ]
         )
         # self.hull.color = (0.8,0.0,0.0)
@@ -161,6 +161,9 @@ class Robot:
     def getAngle(self):
         return self.hull.angle
 
+    def getWorldselfVector(self):
+        return self.hull.GetWorldVector
+
     def rotateCloudTerrance(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
 
@@ -188,11 +191,14 @@ class Robot:
         f_force = -vf + self.command["ahead"]
         p_force = -vs + self.command["transverse"]
 
-        f_force *= 205000*SIZE*SIZE
-        p_force *= 205000*SIZE*SIZE
+        f_force *= 4550000*SIZE*SIZE  # 205000
+        p_force *= 4550000*SIZE*SIZE
+
         self.hull.ApplyForceToCenter((
             (p_force)*side[0] + f_force*forw[0],
             (p_force)*side[1] + f_force*forw[1]), True)
+        
+
 
         torque = - self.hull.angularVelocity * \
             0.001 + self.command["rotate"] * 0.005

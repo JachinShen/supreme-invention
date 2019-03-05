@@ -212,17 +212,18 @@ if __name__ == '__main__':
 
 
         def update_path(self):
-            target = world2grid(Box2D.b2Vec2(6, 1.5))
+            target = world2grid(Box2D.b2Vec2(4, 1.5))
+            start = world2grid(Box2D.b2Vec2(0.5, 4.5))
             world = grid2world(target)
             print(world)
             print(target)
-            self.path = astar(self.DUNGEON, self.width, self.height, (50, 10), 0, target)  # (y,x)
+            self.path = astar(self.DUNGEON, self.width, self.height, start, 0, target)  # (y,x)
 
 
 
 
-    width = 100
-    height = 60
+    width = 200
+    height = 120
     DUNGEON = map2grid(width, height)
     engine = Engine(DUNGEON, width, height)
 
