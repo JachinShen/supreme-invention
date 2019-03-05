@@ -62,8 +62,9 @@ class DQNAgent():
         self.memory = ReplayMemory(10000)
 
         self.steps_done = 0
+        self.target = (-10, -10)
 
-    def select_action(self, state):
+    def select_action(self, state, is_test=False):
         device = self.device
         action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         if state[-1] > 0 and state[-3] > 0:
@@ -73,25 +74,32 @@ class DQNAgent():
 
         pos = (state[0], state[1])
         vel = (state[2], state[3])
+        angle = state[4]
         state = torch.tensor(state).to(device).unsqueeze(0).double()
         self.state = state
         sample = random.random()
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
             math.exp(-1. * self.steps_done / EPS_DECAY)
         self.steps_done += 1
-        if sample > eps_threshold:
+        if is_test or sample > eps_threshold:
             with torch.no_grad():
                 value_map = self.policy_net(state)[0][0]
                 col_max, col_max_indice = value_map.max(dim=0)
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
                 y = max_col_max_indice.item()
                 x = col_max_indice[y].item()
-                self.target = (x/9.0*8.0), (y/9.0*5.0)
+                x = x/9.0*8.0
+                y = y/9.0*5.0
         else:
-            self.target = (random.random()*8.0, random.random()*5.0)
+            x, y = random.random()*8.0, random.random()*5.0
 
-        move = MoveAction(self.target, pos, vel)
-        action = move.MoveTo(pos, vel, action)
+        if (x-self.target[0])**2 + (y-self.target[1])**2 > 4:
+            #print("target: {}".format(self.target))
+            #print("x: {}, y: {}".format(x, y))
+            self.target = (x, y)
+            self.move = MoveAction(self.target, pos, vel, angle)
+
+        action = self.move.MoveTo(pos, vel, angle, action)
         return action
 
     def push(self, next_state, reward):

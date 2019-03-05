@@ -38,7 +38,7 @@ class MoveAction:
         if self.index  < self.path.__len__():
             nexttarget = grid2world(self.path[self.index])
             self.tonext = self.dist(selfpos, nexttarget)
-            print(self.tonext)
+            #print(self.tonext)
             if self.tonext < 1.414 * MINBIAS:
                 self.index += 1
                 action[0] = +0.0
