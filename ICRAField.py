@@ -92,10 +92,10 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
 
         self.robots['robot_0'] = Robot(
-            self.world, 0, 0.5, 4.5,
+            self.world, np.pi/2, 0.5, 4.5,
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(),
+            self.world, np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(),
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
