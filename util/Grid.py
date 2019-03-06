@@ -1,7 +1,9 @@
 import sys
 import Box2D
-sys.path.append("..")
 import random
+import numpy as np
+import matplotlib.pyplot as plt
+sys.path.append(".")
 from Referee.ICRAMap import BORDER_POS, BORDER_BOX
 from Objects.Robot import ROBOT_SIZE,SIZE
 
@@ -43,6 +45,39 @@ class Grid(object):
                        (1, 0), (1, 1)):
             if (y + dy, x + dx) in self:
                 yield y + dy, x + dx
+
+class Map():
+    def __init__(self, width, height):
+        grid = np.zeros([height, width])
+        scale_x = width/8.0
+        scale_y = height/5.0
+        index_x = []
+        index_y = []
+        self.width = width
+        self.height = height
+        self.scale_x = scale_x
+        self.scale_y = scale_y
+
+        for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
+            for idx in range(int((x-w)*scale_x), int((x+w)*scale_x)):
+                for idy in range(int((y-h)*scale_y), int((y+h)*scale_y)):
+                    index_x.append(idx)
+                    index_y.append(idy)
+
+        index_x = np.array(index_x)
+        index_y = np.array(index_y)
+        index_x = np.clip(index_x, 0, width-1)
+        index_y = np.clip(index_y, 0, height-1)
+
+        grid[index_y, index_x] = 1
+        self.grid = grid
+
+    def getGrid(self):
+        return self.grid
+
+    def getXYIndex(self, x, y):
+        return x*self.scale_x, y*self.scale_y
+
 
 
 def map2grid(width, height):
@@ -122,13 +157,17 @@ def world2grid(cood):
 
 
 if __name__ == '__main__':
-    import random
 
-    width = 500
-    height = 116
+    width = 160
+    height = 100
+    grid = map2array(width, height)
+    plt.imshow(grid)
+    plt.show()
+    '''
     str = map2grid(width, height)
     print(str)
     mylen = str.__len__()
     grid = parse_grid(str, width, height)
     str=view_grid(grid)
     print(str)
+    '''

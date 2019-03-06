@@ -5,6 +5,7 @@ from heapq import heappush, heappop
 from sys import maxsize
 import copy
 import sys
+import time
 
 sys.path.append("..")
 from util.Grid import Cell, Grid, parse_grid, map2grid, view_path, grid2world, world2grid
@@ -148,6 +149,7 @@ def astar(DUNGEON, width, height, start_pos, start_g, destination, limit=maxsize
         # Discard leading invalid nodes from the heap.
         while heap and not heap[0][VALID]:
             heappop(heap)
+        
 
     if debug is not None:
         # Pass the dictionary of nodes to the caller.

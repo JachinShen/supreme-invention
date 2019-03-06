@@ -19,7 +19,7 @@ from Referee.BuffArea import AllBuffArea
 from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
-from SupportAlgorithm.MoveAction import MoveAction
+from SupportAlgorithm.NewMove import NewMove
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -423,14 +423,15 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (9, 0)   # origin (0.5, 4.5)
-        move = MoveAction(target, pos, vel, ang)
+        target = (7.5, 4.5)   # origin (0.5, 4.5)
+        move = NewMove()
+        move.setGoal(pos,target)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
             ang = s[4]
-            a = move.MoveTo(pos, vel, ang, a)
+            a = move.moveTo(pos, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 
