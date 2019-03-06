@@ -92,7 +92,7 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
 
         self.robots['robot_0'] = Robot(
-            self.world, -np.pi/2, 0.5, 4.5,
+            self.world, 0, 0.5, 4.5,
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
             self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(),
@@ -423,15 +423,15 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (7.5, 4.5)   # origin (0.5, 4.5)
+        target = (0.5, 1.5)   # origin (0.5, 4.5)
         move = NewMove()
         move.setGoal(pos,target)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
-            ang = s[4]
-            a = move.moveTo(pos, a)
+            angle = s[4]
+            a = move.moveTo(pos, vel, angle, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

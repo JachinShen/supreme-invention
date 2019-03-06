@@ -1,5 +1,6 @@
 import sys
 import time
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -27,6 +28,65 @@ POLYGON_SETTINGS = {
 }
 
 SHOW_PLOTS = True
+# parameter
+MAX_T = 100.0  # maximum time to the goal [s]
+MIN_T = 5.0  # minimum time to the goal[s]
+
+show_animation = True
+
+max_accel = 1.0  # max accel [m/ss]
+max_jerk = 0.5  # max jerk [m/sss]
+
+class quinic_polynomial:
+
+    def __init__(self, xs, vxs, axs, xe, vxe, axe, T):
+
+        # calc coefficient of quinic polynomial
+        self.xs = xs
+        self.vxs = vxs
+        self.axs = axs
+        self.xe = xe
+        self.vxe = vxe
+        self.axe = axe
+
+        self.a0 = xs
+        self.a1 = vxs
+        self.a2 = axs / 2.0
+
+        A = np.array([[T**3, T**4, T**5],
+                      [3 * T ** 2, 4 * T ** 3, 5 * T ** 4],
+                      [6 * T, 12 * T ** 2, 20 * T ** 3]])
+        b = np.array([xe - self.a0 - self.a1 * T - self.a2 * T**2,
+                      vxe - self.a1 - 2 * self.a2 * T,
+                      axe - 2 * self.a2])
+        x = np.linalg.solve(A, b)
+
+        self.a3 = x[0]
+        self.a4 = x[1]
+        self.a5 = x[2]
+
+    def calc_point(self, t):
+        xt = self.a0 + self.a1 * t + self.a2 * t**2 + \
+            self.a3 * t**3 + self.a4 * t**4 + self.a5 * t**5
+
+        return xt
+
+    def calc_first_derivative(self, t):
+        xt = self.a1 + 2 * self.a2 * t + \
+            3 * self.a3 * t**2 + 4 * self.a4 * t**3 + 5 * self.a5 * t**4
+
+        return xt
+
+    def calc_second_derivative(self, t):
+        xt = 2 * self.a2 + 6 * self.a3 * t + 12 * self.a4 * t**2 + 20 * self.a5 * t**3
+
+        return xt
+
+    def calc_third_derivative(self, t):
+        xt = 6 * self.a3 + 24 * self.a4 * t + 60 * self.a5 * t**2
+
+        return xt
+
 
 def mark_points(vertex_iter, **kwargs):
     xs = []
@@ -134,8 +194,11 @@ class NewMove():
         self.environment.store(boundary_coordinates, list_of_holes, validate=False)
         self.environment.prepare()
 
+
     def plot(self):
         draw_prepared_map(self.environment)
+        plt.imshow(self.pmap[:,::-1])
+        plt.show()
 
     def findPath(self, start, goal):
         path, length = self.environment.find_shortest_path(start, goal)
@@ -146,7 +209,7 @@ class NewMove():
         self.index = 1
         self.next_target = self.path[1]
 
-    def moveTo(self, pos, action):
+    def moveTo(self, pos, vel, angle, action):
         if self.distance(pos, self.next_target) < 1:
             self.index += 1
             if self.index < len(self.path):
@@ -156,12 +219,17 @@ class NewMove():
                 action[2] = 0.0
                 return action
 
-        #u = np.array([
-            #self.next_target[0]-pos[0],
-            #self.next_target[1]-pos[1]])
-        #u /= u.max()
-        #action[0] = u[0]
-        #action[2] = -u[1]
+        u = np.array([
+            self.next_target[0]-pos[0],
+            self.next_target[1]-pos[1]])
+        u = u.reshape([2, 1])
+        mat_angle = np.array([
+            [math.cos(angle), math.sin(angle)],
+            [math.sin(angle), -math.cos(angle)]])
+        v = np.matmul(np.linalg.inv(mat_angle), u) / 10
+        print(u, v, angle)
+        #action[0] = -v[0][0]
+        #action[2] = -v[1][0]
         return action
 
     def distance(self, p1, p2):
@@ -170,6 +238,8 @@ class NewMove():
 
 if __name__ == "__main__":
     move = NewMove()
-    move.plot()
+    #move.plot()
     start, goal= (0.5, 0.5), (4.5, 0.5)
     print(move.findPath(start, goal))
+    move.setGoal(start, goal)
+    move.moveTo(start, 0, 0, [])

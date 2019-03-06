@@ -10,6 +10,7 @@ Ref:
 
 """
 
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -110,13 +111,15 @@ def quinic_polynomials_planner(sx, sy, syaw, sv, sa, gx, gy, gyaw, gv, ga, max_a
     ayg = ga * math.sin(gyaw)
 
     for T in np.arange(MIN_T, MAX_T, MIN_T):
+        tic = time.time()
         xqp = quinic_polynomial(sx, vxs, axs, gx, vxg, axg, T)
         yqp = quinic_polynomial(sy, vys, ays, gy, vyg, ayg, T)
+        print(time.time()-tic)
 
-        time, rx, ry, ryaw, rv, ra, rj = [], [], [], [], [], [], []
+        times, rx, ry, ryaw, rv, ra, rj = [], [], [], [], [], [], []
 
         for t in np.arange(0.0, T + dt, dt):
-            time.append(t)
+            times.append(t)
             rx.append(xqp.calc_point(t))
             ry.append(yqp.calc_point(t))
 
@@ -153,14 +156,14 @@ def quinic_polynomials_planner(sx, sy, syaw, sv, sa, gx, gy, gyaw, gv, ga, max_a
             plot_arrow(sx, sy, syaw)
             plot_arrow(gx, gy, gyaw)
             plot_arrow(rx[i], ry[i], ryaw[i])
-            plt.title("Time[s]:" + str(time[i])[0:4] +
+            plt.title("Time[s]:" + str(times[i])[0:4] +
                       " v[m/s]:" + str(rv[i])[0:4] +
                       " a[m/ss]:" + str(ra[i])[0:4] +
                       " jerk[m/sss]:" + str(rj[i])[0:4],
                       )
             plt.pause(0.001)
 
-    return time, rx, ry, ryaw, rv, ra, rj
+    return times, rx, ry, ryaw, rv, ra, rj
 
 
 def plot_arrow(x, y, yaw, length=1.0, width=0.5, fc="r", ec="k"):  # pragma: no cover

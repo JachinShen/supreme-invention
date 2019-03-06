@@ -2,14 +2,13 @@
 Mobile robot motion planning sample with Dynamic Window Approach
 author: Atsushi Sakai (@Atsushi_twi)
 """
-
+import time
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 
 import sys
 sys.path.append(".")
-
 from Referee.ICRAMap import BORDER_POS, BORDER_BOX
 
 show_animation = True
@@ -212,7 +211,9 @@ def main(gx=10, gy=10):
     traj = np.array(x)
 
     for i in range(1000):
+        tic = time.time() 
         u, ltraj = dwa_control(x, u, config, goal, ob)
+        print(time.time())
 
         x = motion(x, u, config.dt)
         traj = np.vstack((traj, x))  # store state history
@@ -245,4 +246,4 @@ def main(gx=10, gy=10):
 
 
 if __name__ == '__main__':
-    main(0.5, 4)
+    main(0.5, 0.5)
