@@ -15,6 +15,14 @@ class DQN(nn.Module):
             nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 5x5 -> 7x7
             nn.LeakyReLU(),
             nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 7x7 -> 9x9
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 11x11
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 13x13
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 15x15
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 17x17
         )
 
     def forward(self, s):

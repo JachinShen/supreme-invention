@@ -7,10 +7,10 @@ sys.path.append(".")
 from Referee.ICRAMap import BORDER_POS, BORDER_BOX
 from Objects.Robot import ROBOT_SIZE,SIZE
 
-BORDER_POS = [(-0.1, 2.5), (4, -0.1), (4, 5.1), (8.1, 2.5), (1.525, 1.9), (3.375, 0.5), (6.475, 3.1), (4.625, 4.5),
-              (1.7, 3.875), (4, 2.5), (6.3, 1.125)]
-BORDER_BOX = [(0.1, 2.5), (4, 0.1), (4, 0.1), (0.1, 2.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
-              (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
+#BORDER_POS = [(-0.1, 2.5), (4, -0.1), (4, 5.1), (8.1, 2.5), (1.525, 1.9), (3.375, 0.5), (6.475, 3.1), (4.625, 4.5),
+              #(1.7, 3.875), (4, 2.5), (6.3, 1.125)]
+#BORDER_BOX = [(0.1, 2.5), (4, 0.1), (4, 0.1), (0.1, 2.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
+              #(0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
 MAXSCALE = 20
 
@@ -59,15 +59,19 @@ class Map():
         self.scale_y = scale_y
 
         for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
-            for idx in range(int((x-w)*scale_x), int((x+w)*scale_x)):
-                for idy in range(int((y-h)*scale_y), int((y+h)*scale_y)):
+            for idx in range(int((x-w-0.25)*scale_x), int((x+w+0.5)*scale_x)):
+                if idx < 0 or idx >= width:
+                    continue
+                for idy in range(int((y-h-0.25)*scale_y), int((y+h+0.5)*scale_y)):
+                    if idy < 0 or idy >= height:
+                        continue
                     index_x.append(idx)
                     index_y.append(idy)
 
         index_x = np.array(index_x)
         index_y = np.array(index_y)
-        index_x = np.clip(index_x, 0, width-1)
-        index_y = np.clip(index_y, 0, height-1)
+        #index_x = np.clip(index_x, 0, width-1)
+        #index_y = np.clip(index_y, 0, height-1)
 
         grid[index_y, index_x] = 1
         self.grid = grid

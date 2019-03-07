@@ -24,13 +24,13 @@ class Config():
         self.max_yawrate = 40.0 * math.pi / 180.0  # [rad/s]
         self.max_accel = 0.2  # [m/ss]
         self.max_dyawrate = 40.0 * math.pi / 180.0  # [rad/ss]
-        self.v_reso = 0.01  # [m/s]
-        self.yawrate_reso = 0.1 * math.pi / 180.0  # [rad/s]
+        self.v_reso = 0.05  # [m/s]
+        self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
         self.dt = 0.1  # [s]
-        self.predict_time = 3.0  # [s]
-        self.to_goal_cost_gain = 1.0
+        self.predict_time = 2.0  # [s]
+        self.to_goal_cost_gain = 10.0
         self.speed_cost_gain = 1.0
-        self.robot_radius = 0.4  # [m]
+        self.robot_radius = 0.25  # [m]
 
 
 def motion(x, u, dt):
@@ -95,7 +95,7 @@ def calc_final_input(x, u, dw, config, goal, ob):
             speed_cost = config.speed_cost_gain * \
                 (config.max_speed - traj[-1, 3])
             ob_cost = calc_obstacle_cost(traj, ob, config)
-            # print(ob_cost)
+            #print("ob cost: {}".format(ob_cost))
 
             final_cost = to_goal_cost + speed_cost + ob_cost
 
@@ -117,6 +117,19 @@ def calc_obstacle_cost(traj, ob, config):
     minr = float("inf")
 
     for ii in range(0, len(traj[:, 1]), skip_n):
+        x = int(traj[ii, 0]*10)
+        y = int(traj[ii, 1]*10)
+        ox, oy = ob[y, x]
+        dx = (traj[ii, 0]) - ox
+        dy = (traj[ii, 1]) - oy
+        #r = np.hypot(dx, dy)
+        r = math.sqrt(dx**2 + dy**2)
+        if r <= config.robot_radius:
+            #print("r: {}".format(r))
+            return float("Inf")  # collision
+        if minr >= r:
+            minr = r
+        '''
         for i in range(len(ob[:, 0])):
             ox = ob[i, 0]
             oy = ob[i, 1]
@@ -125,23 +138,28 @@ def calc_obstacle_cost(traj, ob, config):
 
             r = math.sqrt(dx**2 + dy**2)
             if r <= config.robot_radius:
+                print("r: {}".format(r))
                 return float("Inf")  # collision
 
             if minr >= r:
                 minr = r
+        '''
 
+    #print("minr: {}".format(minr))
     return 1.0 / minr  # OK
 
 
 def calc_to_goal_cost(traj, goal, config):
     # calc to goal cost. It is 2D norm.
 
-    goal_magnitude = math.sqrt(goal[0]**2 + goal[1]**2)
-    traj_magnitude = math.sqrt(traj[-1, 0]**2 + traj[-1, 1]**2)
-    dot_product = (goal[0] * traj[-1, 0]) + (goal[1] * traj[-1, 1])
-    error = dot_product / (goal_magnitude * traj_magnitude)
-    error_angle = math.acos(error)
-    cost = config.to_goal_cost_gain * error_angle
+    #goal_magnitude = math.sqrt(goal[0]**2 + goal[1]**2)
+    #traj_magnitude = math.sqrt(traj[-1, 0]**2 + traj[-1, 1]**2)
+    #dot_product = (goal[0] * traj[-1, 0]) + (goal[1] * traj[-1, 1])
+    #error = dot_product / (goal_magnitude * traj_magnitude)
+    #error_angle = math.acos(error)
+    #cost = config.to_goal_cost_gain * error_angle
+    cost = config.to_goal_cost_gain * math.sqrt(
+        (goal[0]-traj[-1, 0])**2 + (goal[1]-traj[-1, 1])**2)
 
     return cost
 
@@ -161,37 +179,69 @@ def plot_arrow(x, y, yaw, length=0.5, width=0.1):  # pragma: no cover
               head_length=width, head_width=width)
     plt.plot(x, y)
 
+def calc_repulsive_potential(x, y, ox, oy, rr):
+    # search nearest obstacle
+    minid = -1
+    dmin = float("inf")
+    for i, _ in enumerate(ox):
+        #d = np.hypot(x - ox[i], y - oy[i])
+        d = math.sqrt((x - ox[i])**2 + (y - oy[i])**2)
+        if dmin >= d:
+            dmin = d
+            minid = i
+
+    # calc repulsive potential
+    #dq = np.hypot(x - ox[minid], y - oy[minid])
+    return np.array([ox[minid], oy[minid]])
+
 class DynamicWindow():
     def __init__(self):
-        ob = [[-1, -1]]
-        #for pos, box in zip(BORDER_POS, BORDER_BOX):
-            #ob.append(pos)
-        self.ob = np.array(ob)
-        print(ob)
+        #ob = [[-1, -1]]
+        '''
+        ox = []
+        oy = []
+        for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
+            for i in np.arange(x-w, x+w, 0.1):
+                for j in np.arange(y-h, y+h, 0.1):
+                    ox.append(i)
+                    oy.append(j)
+        ob = np.zeros([50, 80, 2])
+        for ix in range(80):
+            x = ix / 10
+            for iy in range(50):
+                y = iy / 10
+                ob[iy, ix] = calc_repulsive_potential(x, y, ox, oy, 0.25)
+        plt.imshow(ob[:,:,1])
+        plt.show()
+        '''
+        self.ob = np.load("ob.npy")
         self.config = Config()
 
-    def move(self, action, pos, vel, angle, goal):
+    def moveTo(self, action, pos, vel, angle, goal):
         vel = math.sqrt(vel[0]**2+vel[1]**2)
         x = np.array([pos[0], pos[1], angle, vel, 0.0])
         u = np.array([vel, 0.0])
         u, ltraj = dwa_control(x, u, self.config, goal, self.ob)
         print(pos, goal, u)
-        action[0] = u[0]*2
-        action[1] = u[1]*2
+        action[0] = u[0] * 2
+        action[1] = u[1] * 3
         return action
 
 
-def main(gx=10, gy=10):
+def main(gx, gy, ob):
     print(__file__ + " start!!")
     # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
-    x = np.array([0.0, 0.0, math.pi / 8.0, 0.0, 0.0])
+    x = np.array([0.5, 0.5, math.pi / 8.0, 0.0, 0.0])
     # goal position [x(m), y(m)]
     goal = np.array([gx, gy])
     # obstacles [x(m) y(m), ....]
-    ob = [[-1, -1]]
-    for pos, box in zip(BORDER_POS, BORDER_BOX):
-        ob.append(pos)
-    ob = np.array(ob)
+    ox, oy = [], []
+    for (c_x, c_y), (w, h) in zip(BORDER_POS, BORDER_BOX):
+        for i in np.arange(c_x-w, c_x+w, 1):
+            for j in np.arange(c_y-h, c_y+h, 1):
+                ox.append(i)
+                oy.append(j)
+    #ob = np.array(ob)
     '''
     ob = np.array([[-1, -1],
                    [0, 2],
@@ -213,20 +263,21 @@ def main(gx=10, gy=10):
     for i in range(1000):
         tic = time.time() 
         u, ltraj = dwa_control(x, u, config, goal, ob)
-        print(time.time())
+        print(time.time()-tic)
 
         x = motion(x, u, config.dt)
         traj = np.vstack((traj, x))  # store state history
 
         # print(traj)
-        print(x, goal, u)
+        #print(x, goal, u)
 
         if show_animation:
             plt.cla()
             plt.plot(ltraj[:, 0], ltraj[:, 1], "-g")
             plt.plot(x[0], x[1], "xr")
             plt.plot(goal[0], goal[1], "xb")
-            plt.plot(ob[:, 0], ob[:, 1], "ok")
+            #plt.imshow(ob[:,:])
+            plt.plot(ox, oy, "ok")
             plot_arrow(x[0], x[1], x[2])
             plt.axis("equal")
             plt.grid(True)
@@ -246,4 +297,6 @@ def main(gx=10, gy=10):
 
 
 if __name__ == '__main__':
-    main(0.5, 0.5)
+    dy = DynamicWindow()
+    ob = dy.ob
+    main(6.5, 4.5, ob)

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from extremitypathfinder.extremitypathfinder import PolygonEnvironment as Environment
 sys.path.append(".")
+from SupportAlgorithm.DynamicWindow import DynamicWindow
 
 WIDTH = 160
 HEIGHT = 100
@@ -19,7 +20,7 @@ BORDER_POS = [(1.525, 1.9), (6.475, 3.1),
 BORDER_BOX = [(0.125, 0.5), (0.125, 0.5), 
               (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
-ROBOT_SIZE = 0.3
+ROBOT_SIZE = 0.4
 
 POLYGON_SETTINGS = {
     'edgecolor': 'black',
@@ -193,43 +194,54 @@ class NewMove():
 
         self.environment.store(boundary_coordinates, list_of_holes, validate=False)
         self.environment.prepare()
-
+        self.done = True
+        self.dynamic = DynamicWindow()
 
     def plot(self):
         draw_prepared_map(self.environment)
-        plt.imshow(self.pmap[:,::-1])
-        plt.show()
 
     def findPath(self, start, goal):
         path, length = self.environment.find_shortest_path(start, goal)
         return path
 
     def setGoal(self, start, goal):
+        print(start, goal)
         self.path = self.findPath(start, goal)
+        #if len(self.path) == 0:
+            #self.done = True
+            #return
         self.index = 1
         self.next_target = self.path[1]
+        self.done = False
 
     def moveTo(self, pos, vel, angle, action):
-        if self.distance(pos, self.next_target) < 1:
+        if self.done:
+            return action
+        if self.distance(pos, self.next_target) < 0.1:
             self.index += 1
             if self.index < len(self.path):
                 self.next_target = self.path[self.index]
             else:
-                action[0] = 0.0
-                action[2] = 0.0
+                self.done = True
+                action[0], action[1], action[2] = 0, 0, 0
                 return action
-
+        action = self.dynamic.moveTo(action, pos, vel, angle, self.next_target)
+        '''
         u = np.array([
             self.next_target[0]-pos[0],
             self.next_target[1]-pos[1]])
+        target_angle = math.atan2(u[1], u[0])
         u = u.reshape([2, 1])
         mat_angle = np.array([
             [math.cos(angle), math.sin(angle)],
             [math.sin(angle), -math.cos(angle)]])
         v = np.matmul(np.linalg.inv(mat_angle), u) / 10
-        print(u, v, angle)
-        #action[0] = -v[0][0]
-        #action[2] = -v[1][0]
+        #print(u, v, angle)
+        v /= v.max()
+        action[0] = v[0][0] 
+        action[1] = target_angle - angle
+        action[2] = v[1][0]
+        '''
         return action
 
     def distance(self, p1, p2):
@@ -238,8 +250,6 @@ class NewMove():
 
 if __name__ == "__main__":
     move = NewMove()
-    #move.plot()
+    move.plot()
     start, goal= (0.5, 0.5), (4.5, 0.5)
     print(move.findPath(start, goal))
-    move.setGoal(start, goal)
-    move.moveTo(start, 0, 0, [])
