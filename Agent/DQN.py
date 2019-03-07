@@ -33,7 +33,7 @@ class DQN(nn.Module):
         )
 
         self.fc2 = nn.Sequential(
-            nn.Linear(26, 16),
+            nn.Linear(35, 16),
             nn.ReLU()
         )
 
@@ -64,16 +64,17 @@ class DQN(nn.Module):
 
     def forward(self, s):
         batch_size = s.size(0)
+        state_num = s.size(1)
         # print(batch_size)
 
-        damage = torch.squeeze(s[:,5]).view(batch_size, 1) #b * 1
+        state = torch.squeeze(s).view(batch_size, state_num) #b * 10
 
         #SJ
         x_sj = self.cnn(self.map).view(-1) #280
         map_feature_sj = self.fc1(x_sj) #25
         map_feature_sj = map_feature_sj.repeat(batch_size).reshape(batch_size, 25) #b * 25
         #map_feature_sj = self.fc1(self.cnn(self.map).view(batch_size, -1)) #b * 25
-        x_sj = torch.cat((map_feature_sj, damage), 1) # b * 26
+        x_sj = torch.cat((map_feature_sj, state), 1) # b * 35
         x_sj = self.fc2(x_sj) # b * 16
         y_sj = self.fc3(x_sj) # b * 8
         x_sj = self.sigmoid_sj(torch.cat((x_sj, y_sj), 1)) # b* 3
@@ -83,7 +84,7 @@ class DQN(nn.Module):
         map_feature_tu = self.fc1(x_tu)  # 25
         map_feature_tu = map_feature_tu.repeat(batch_size).reshape(batch_size, 25)  # b * 25
         # map_feature_tu = self.fc1(self.cnn(self.map).view(batch_size, -1)) #b * 25
-        x_tu = self.fc2(torch.cat((map_feature_tu, damage), 1)) # b * 16
+        x_tu = self.fc2(torch.cat((map_feature_tu, state), 1)) # b * 16
         y_tu = self.fc3(x_tu) #b * 8
         x_tu = self.fc4_tu(torch.cat((x_tu, y_tu), 1)) # b * 25
         x_tu = x_tu.reshape(batch_size, 1, 5, 5) # b * 1 * 5 * 5
