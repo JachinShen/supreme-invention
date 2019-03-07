@@ -21,15 +21,15 @@ class Config():
         # robot parameter
         self.max_speed = 1.0  # [m/s]
         self.min_speed = -1.0  # [m/s]
-        self.max_yawrate = 180 * math.pi / 180.0  # [rad/s]
-        self.max_accel = 1000.0  # [m/ss]
-        self.max_dyawrate = 100 * math.pi / 180.0  # [rad/ss]
-        self.v_reso = 0.2  # [m/s]
+        self.max_yawrate = 40 * math.pi / 180.0  # [rad/s]
+        self.max_accel = 1.0  # [m/ss]
+        self.max_dyawrate = 400 * math.pi / 180.0  # [rad/ss]
+        self.v_reso = 0.05  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
         self.dt = 0.1  # [s]
-        self.predict_time = 1.0  # [s]
-        self.to_goal_cost_gain = 10.0
-        self.speed_cost_gain = 10.0
+        self.predict_time = 2.0  # [s]
+        self.to_goal_cost_gain = 1.0
+        self.speed_cost_gain = 1.0
         self.robot_radius = 0.25  # [m]
 
 
@@ -152,13 +152,13 @@ def calc_obstacle_cost(traj, ob, config):
 def calc_to_goal_cost(traj, goal, config):
     # calc to goal cost. It is 2D norm.
 
-    #goal_magnitude = math.sqrt(goal[0]**2 + goal[1]**2)
-    #traj_magnitude = math.sqrt(traj[-1, 0]**2 + traj[-1, 1]**2)
-    #dot_product = (goal[0] * traj[-1, 0]) + (goal[1] * traj[-1, 1])
-    #error = dot_product / (goal_magnitude * traj_magnitude)
-    #error_angle = math.acos(error)
-    #cost = config.to_goal_cost_gain * error_angle
-    cost = config.to_goal_cost_gain * math.sqrt(
+    goal_magnitude = math.sqrt(goal[0]**2 + goal[1]**2)
+    traj_magnitude = math.sqrt(traj[-1, 0]**2 + traj[-1, 1]**2)
+    dot_product = (goal[0] * traj[-1, 0]) + (goal[1] * traj[-1, 1])
+    error = dot_product / (goal_magnitude * traj_magnitude)
+    error_angle = math.acos(error)
+    cost = config.to_goal_cost_gain * error_angle
+    cost += config.to_goal_cost_gain * math.sqrt(
         (goal[0]-traj[-1, 0])**2 + (goal[1]-traj[-1, 1])**2)
 
     return cost

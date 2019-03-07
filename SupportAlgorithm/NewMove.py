@@ -217,7 +217,7 @@ class NewMove():
     def moveTo(self, pos, vel, angle, action):
         if self.done:
             return action
-        if self.distance(pos, self.next_target) < 0.25:
+        if self.distance(pos, self.next_target) < 0.5:
             self.index += 1
             if self.index < len(self.path):
                 self.next_target = self.path[self.index]
