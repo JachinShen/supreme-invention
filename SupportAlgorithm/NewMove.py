@@ -217,7 +217,7 @@ class NewMove():
     def moveTo(self, pos, vel, angle, action):
         if self.done:
             return action
-        if self.distance(pos, self.next_target) < 0.1:
+        if self.distance(pos, self.next_target) < 0.25:
             self.index += 1
             if self.index < len(self.path):
                 self.next_target = self.path[self.index]
@@ -225,7 +225,9 @@ class NewMove():
                 self.done = True
                 action[0], action[1], action[2] = 0, 0, 0
                 return action
+        tic = time.time()
         action = self.dynamic.moveTo(action, pos, vel, angle, self.next_target)
+        print(time.time() - tic)
         '''
         u = np.array([
             self.next_target[0]-pos[0],

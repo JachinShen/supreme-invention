@@ -69,7 +69,7 @@ class Robot:
                 fixtures=fixtureDef(
                     shape=polygonShape(
                         vertices=[(x*front_k*SIZE, y*front_k*SIZE) for x, y in WHEEL_POLY]),
-                    density=0.1, restitution=1, userData=userData + "_wheel", friction=1)
+                    density=1e-6, restitution=1, userData=userData + "_wheel", friction=1)
             )
             rjd = revoluteJointDef(
                 bodyA=self.hull,
@@ -188,19 +188,26 @@ class Robot:
         v = self.hull.linearVelocity
         vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
         vs = side[0]*v[0] + side[1]*v[1]  # side speed
-        f_force = -vf + self.command["ahead"]
-        p_force = -vs + self.command["transverse"]
+        #f_a = (-vf + self.command["ahead"]) * 5
+        #p_a = (-vs + self.command["transverse"]) * 5
 
-        f_force *= 4550000*SIZE*SIZE  # 205000
-        p_force *= 4550000*SIZE*SIZE
+        #f_force = self.hull.mass * f_a
+        #p_force = self.hull.mass * p_a
+        f_force = self.command["ahead"]
+        p_force = self.command["transverse"]
 
-        self.hull.ApplyForceToCenter((
+        #self.hull.ApplyForceToCenter((
+            #(p_force)*side[0] + f_force*forw[0],
+            #(p_force)*side[1] + f_force*forw[1]), True)
+        self.hull.linearVelocity = (
             (p_force)*side[0] + f_force*forw[0],
-            (p_force)*side[1] + f_force*forw[1]), True)
+            (p_force)*side[1] + f_force*forw[1])
 
-        torque = - self.hull.angularVelocity * \
-            0.001 + self.command["rotate"] * 0.005
-        self.hull.ApplyAngularImpulse(torque, True)
+        #omega = - self.hull.angularVelocity * \
+            #0.5 + self.command["rotate"] * 2
+        #torque = self.hull.mass * omega
+        #self.hull.ApplyTorque(torque, True)
+        self.hull.angularVelocity = self.command["rotate"]
 
     def draw(self, viewer):
         for obj in self.drawlist:

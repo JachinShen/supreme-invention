@@ -20,16 +20,16 @@ class Config():
     def __init__(self):
         # robot parameter
         self.max_speed = 1.0  # [m/s]
-        self.min_speed = -0.5  # [m/s]
-        self.max_yawrate = 40.0 * math.pi / 180.0  # [rad/s]
-        self.max_accel = 0.2  # [m/ss]
-        self.max_dyawrate = 40.0 * math.pi / 180.0  # [rad/ss]
-        self.v_reso = 0.05  # [m/s]
+        self.min_speed = -1.0  # [m/s]
+        self.max_yawrate = 180 * math.pi / 180.0  # [rad/s]
+        self.max_accel = 1000.0  # [m/ss]
+        self.max_dyawrate = 100 * math.pi / 180.0  # [rad/ss]
+        self.v_reso = 0.2  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
         self.dt = 0.1  # [s]
-        self.predict_time = 2.0  # [s]
+        self.predict_time = 1.0  # [s]
         self.to_goal_cost_gain = 10.0
-        self.speed_cost_gain = 1.0
+        self.speed_cost_gain = 10.0
         self.robot_radius = 0.25  # [m]
 
 
@@ -223,8 +223,8 @@ class DynamicWindow():
         u = np.array([vel, 0.0])
         u, ltraj = dwa_control(x, u, self.config, goal, self.ob)
         print(pos, goal, u)
-        action[0] = u[0] * 2
-        action[1] = u[1] * 3
+        action[0] = u[0]
+        action[1] = u[1]
         return action
 
 
