@@ -125,7 +125,7 @@ class ICRAField(gym.Env, EzPickle):
         health = robot_state["health"]
         robot_0 = robot_state["robot_0"]
         robot_1 = robot_state["robot_1"]
-        return [pos[0], pos[1], velocity[0], velocity[1], angle,
+        return [pos[0], pos[1], velocity[0], velocity[1], angle, health,
                 robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
 
     def stepCollision(self):

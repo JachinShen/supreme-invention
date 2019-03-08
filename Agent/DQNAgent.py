@@ -55,6 +55,8 @@ class DQNAgent():
 
         self.policy_net = DQN().to(device).double()
         self.target_net = DQN().to(device).double()
+        # print('xxxxxxxxxxxxxxx')
+        # print(self.policy_net.state_dict())
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
@@ -157,6 +159,7 @@ class DQNAgent():
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy_net.parameters():
+            if(param.grad is None): continue
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
