@@ -4,7 +4,9 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 import random
 import math
 import Box2D
+import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from collections import namedtuple
 from itertools import count
 
@@ -13,8 +15,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from SupportAlgorithm.MoveAction import MoveAction
+from SupportAlgorithm.NewMove import NewMove
 from Agent.DQN import DQN
+from util.Grid import Map
 
 BATCH_SIZE = 128
 GAMMA = 0.999
@@ -62,8 +65,15 @@ class DQNAgent():
         self.memory = ReplayMemory(10000)
 
         self.steps_done = 0
+        self.target = (-10, -10)
+        self.move = NewMove()
+        icra_map = Map(80, 50)
+        grid = icra_map.getGrid()
+        grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
+        grid = 1 - grid
+        self.grid = torch.from_numpy(grid)
 
-    def select_action(self, state):
+    def select_action(self, state, is_test=False):
         device = self.device
         action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         if state[-1] > 0 and state[-3] > 0:
@@ -73,25 +83,32 @@ class DQNAgent():
 
         pos = (state[0], state[1])
         vel = (state[2], state[3])
+        angle = state[4]
         state = torch.tensor(state).to(device).unsqueeze(0).double()
         self.state = state
         sample = random.random()
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
             math.exp(-1. * self.steps_done / EPS_DECAY)
-        self.steps_done += 1
-        if sample > eps_threshold:
+        if is_test or sample > eps_threshold:
             with torch.no_grad():
                 value_map = self.policy_net(state)[0][0]
+                value_map *= self.grid
+                #plt.imshow(value_map.numpy())
+                #plt.show()
                 col_max, col_max_indice = value_map.max(dim=0)
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
-                y = max_col_max_indice.item()
-                x = col_max_indice[y].item()
-                self.target = (x/9.0*8.0), (y/9.0*5.0)
+                x = max_col_max_indice.item()
+                y = col_max_indice[x].item()
+                x = x/17.0*8.0
+                y = y/17.0*5.0
         else:
-            self.target = (random.random()*8.0, random.random()*5.0)
+            x, y = random.random()*8.0, random.random()*5.0
 
-        move = MoveAction(self.target, pos, vel)
-        action = move.MoveTo(pos, vel, action)
+        self.target = (x, y)
+        self.move.setGoal(pos, self.target)
+        self.steps_done += 1
+
+        action = self.move.moveTo(pos, vel, angle, action)
         return action
 
     def push(self, next_state, reward):

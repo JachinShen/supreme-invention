@@ -19,7 +19,7 @@ from Referee.BuffArea import AllBuffArea
 from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
 from SupportAlgorithm.DetectCallback import detectCallback
-from SupportAlgorithm.MoveAction import MoveAction
+from SupportAlgorithm.NewMove import NewMove
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -92,10 +92,10 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
 
         self.robots['robot_0'] = Robot(
-            self.world, -np.pi/2, 0.5, 4.5,
+            self.world, np.pi/2, 0.5, 0.5,
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, -np.pi / 2, 0.5+7*random.random(), 0.5+4*random.random(),
+            self.world, np.pi / 2, 6.5, 0.5,
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
@@ -414,6 +414,7 @@ if __name__ == "__main__":
         env.monitor.start('/tmp/video-test', force=True)
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
+    move = NewMove()
     while True:
         env.reset()
         total_reward = 0.0
@@ -423,14 +424,14 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (9, 0)   # origin (0.5, 4.5)
-        move = MoveAction(target, pos, vel, ang)
+        target = (7.5, 4.5)   # origin (0.5, 4.5)
+        move.setGoal(pos,target)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
-            ang = s[4]
-            a = move.MoveTo(pos, vel, ang, a)
+            angle = s[4]
+            a = move.moveTo(pos, vel, angle, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

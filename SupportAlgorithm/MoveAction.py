@@ -1,5 +1,6 @@
 import sys
 import math
+import time
 import numpy as np
 
 import sys
@@ -26,7 +27,12 @@ class MoveAction:
         DUNGEON = map2grid(WIDTH, HEIGHT)
         self.target_grid = world2grid(target)
         self.selfpos_gird = world2grid(pos)
-        self.path = pathprocess(astar(DUNGEON, WIDTH, HEIGHT, self.selfpos_gird, 0, self.target_grid))
+        tic = time.time()
+        print(DUNGEON)
+        path = astar(DUNGEON, WIDTH, HEIGHT, self.selfpos_gird, 0, self.target_grid)
+        print(path)
+        print("Astar: {}".format(time.time()-tic))
+        self.path = pathprocess(path)
         self.tonext = 1000
         self.velocity = vel
 
@@ -38,7 +44,7 @@ class MoveAction:
         if self.index  < self.path.__len__():
             nexttarget = grid2world(self.path[self.index])
             self.tonext = self.dist(selfpos, nexttarget)
-            print(self.tonext)
+            #print(self.tonext)
             if self.tonext < 1.414 * MINBIAS:
                 self.index += 1
                 action[0] = +0.0

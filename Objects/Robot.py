@@ -19,24 +19,24 @@ WHEEL_W = 30
 ROBOT_WIDTH = ROBOT_SIZE - WHEEL_W*2
 ROBOT_LENGTH = ROBOT_SIZE
 HULL_POLY = [
-    (-ROBOT_WIDTH, +ROBOT_LENGTH), (+ROBOT_WIDTH, +ROBOT_LENGTH),
-    (+ROBOT_WIDTH, -ROBOT_LENGTH), (-ROBOT_WIDTH, -ROBOT_LENGTH)
+    (-ROBOT_LENGTH, +ROBOT_WIDTH), (+ROBOT_LENGTH, +ROBOT_WIDTH),
+    (+ROBOT_LENGTH, -ROBOT_WIDTH), (-ROBOT_LENGTH, -ROBOT_WIDTH)
 ]
-WHEEL_POS_X = ROBOT_WIDTH + WHEEL_W
-WHEEL_POS_Y = ROBOT_LENGTH - WHEEL_R
+WHEEL_POS_X = ROBOT_LENGTH - WHEEL_R
+WHEEL_POS_Y = ROBOT_WIDTH + WHEEL_W
 WHEEL_POS = [
     (-WHEEL_POS_X, +WHEEL_POS_Y), (+WHEEL_POS_X, +WHEEL_POS_Y),
     (-WHEEL_POS_X, -WHEEL_POS_Y), (+WHEEL_POS_X, -WHEEL_POS_Y)
 ]
 WHEEL_POLY = [
-    (-WHEEL_W, +WHEEL_R), (+WHEEL_W, +WHEEL_R),
-    (+WHEEL_W, -WHEEL_R), (-WHEEL_W, -WHEEL_R)
+    (-WHEEL_R, +WHEEL_W), (+WHEEL_R, +WHEEL_W),
+    (+WHEEL_R, -WHEEL_W), (-WHEEL_R, -WHEEL_W)
 ]
 WHEEL_COLOR = (0.0, 0.0, 0.0)
 
 GUN_POLY = [
-    (-20, +260), (+20, +260),
-    (+20, -0), (-20, -0)
+    (-0, +20), (+260, +20),
+    (+260, -20), (-0, -20)
 ]
 
 BULLETS_ADDED_ONE_TIME = 50
@@ -69,7 +69,7 @@ class Robot:
                 fixtures=fixtureDef(
                     shape=polygonShape(
                         vertices=[(x*front_k*SIZE, y*front_k*SIZE) for x, y in WHEEL_POLY]),
-                    density=0.1, restitution=1, userData=userData + "_wheel", friction=1)
+                    density=1e-6, restitution=1, userData=userData + "_wheel", friction=1)
             )
             rjd = revoluteJointDef(
                 bodyA=self.hull,
@@ -109,9 +109,9 @@ class Robot:
             #upperAngle = +math.pi,
         ))
         self.gun.color = (0.1, 0.1, 0.1)
-        self.gun.angle = init_angle
 
-        self.hull.angle = init_angle*1.04
+        self.hull.angle = init_angle
+        self.gun.angle = init_angle
         self.drawlist = self.wheels + [self.hull, self.gun]
         self.group = group
         self.robot_id = robot_id
@@ -147,7 +147,7 @@ class Robot:
             return False
 
     def getGunAnglePos(self):
-        return self.gun.angle+math.pi/2, self.gun.position
+        return self.gun.angle, self.gun.position
 
     def getAnglePos(self):
         return self.hull.angle, self.hull.position
@@ -168,7 +168,7 @@ class Robot:
         self.gun_joint.motorSpeed = angular_vel
 
     def setCloudTerrance(self, angle):
-        self.gun.angle = angle - math.pi/2
+        self.gun.angle = angle
 
     def moveAheadBack(self, gas):
         self.command["ahead"] = gas
@@ -183,26 +183,31 @@ class Robot:
         self.command["rotate"] = r
 
     def step(self, dt):
-        forw = self.hull.GetWorldVector((0, 1))  # forward
-        side = self.hull.GetWorldVector((1, 0))
+        forw = self.hull.GetWorldVector((1, 0))  # forward
+        side = self.hull.GetWorldVector((0, -1))
         v = self.hull.linearVelocity
         vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
         vs = side[0]*v[0] + side[1]*v[1]  # side speed
-        f_force = -vf + self.command["ahead"]
-        p_force = -vs + self.command["transverse"]
+        #f_a = (-vf + self.command["ahead"]) * 5
+        #p_a = (-vs + self.command["transverse"]) * 5
 
-        f_force *= 4550000*SIZE*SIZE  # 205000
-        p_force *= 4550000*SIZE*SIZE
+        #f_force = self.hull.mass * f_a
+        #p_force = self.hull.mass * p_a
+        f_force = self.command["ahead"]
+        p_force = self.command["transverse"]
 
-        self.hull.ApplyForceToCenter((
+        #self.hull.ApplyForceToCenter((
+            #(p_force)*side[0] + f_force*forw[0],
+            #(p_force)*side[1] + f_force*forw[1]), True)
+        self.hull.linearVelocity = (
             (p_force)*side[0] + f_force*forw[0],
-            (p_force)*side[1] + f_force*forw[1]), True)
-        
+            (p_force)*side[1] + f_force*forw[1])
 
-
-        torque = - self.hull.angularVelocity * \
-            0.001 + self.command["rotate"] * 0.005
-        self.hull.ApplyAngularImpulse(torque, True)
+        #omega = - self.hull.angularVelocity * \
+            #0.5 + self.command["rotate"] * 2
+        #torque = self.hull.mass * omega
+        #self.hull.ApplyTorque(torque, True)
+        self.hull.angularVelocity = self.command["rotate"]
 
     def draw(self, viewer):
         for obj in self.drawlist:

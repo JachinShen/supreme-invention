@@ -13,7 +13,7 @@ from Agent.HandAgent import HandAgent
 
 TARGET_UPDATE = 10
 
-seed = 124
+seed = 14 
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
@@ -22,7 +22,7 @@ random.seed(seed)
 env = ICRAField()
 agent = DQNAgent()
 agent2 = HandAgent()
-agent.load()
+#agent.load()
 device = agent.device
 episode_durations = []
 
@@ -44,7 +44,7 @@ for i_episode in range(num_episodes):
             action[4] = +1.0
         else:
             action[4] = 0.0
-        action = agent.select_action(state)
+        #action = agent.select_action(state, True)
 
         next_state, reward, done, info = env.step(action)
 
@@ -54,6 +54,7 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
+            agent2.reset()
             break
 
 env.close()
