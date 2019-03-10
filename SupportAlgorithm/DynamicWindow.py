@@ -21,8 +21,8 @@ class Config():
         # robot parameter
         self.max_speed = 1.0  # [m/s]
         self.min_speed = -1.0  # [m/s]
-        self.max_yawrate = 40 * math.pi / 180.0  # [rad/s]
-        self.max_accel = 1.0  # [m/ss]
+        self.max_yawrate = 1 * math.pi / 180.0  # [rad/s]  #40
+        self.max_accel = 2.0  # [m/ss]
         self.max_dyawrate = 400 * math.pi / 180.0  # [rad/ss]
         self.v_reso = 0.05  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
@@ -36,11 +36,12 @@ class Config():
 def motion(x, u, dt):
     # motion model
 
-    x[2] += u[1] * dt
-    x[0] += u[0] * math.cos(x[2]) * dt
-    x[1] += u[0] * math.sin(x[2]) * dt
+    x[2] += u[1] * dt # u:velocity.u1: angle=>chuizhi velocity  u0: linar, x:position x0:x,x1:y,x2:angle
+    x[0] += u[0] * math.cos(x[2]) * dt - u[2] * math.sin(x[2]) * dt
+    x[1] += u[0] * math.sin(x[2]) * dt + u[2] * math.cos(x[2]) * dt
     x[3] = u[0]
     x[4] = u[1]
+    x[5] = u[2]
 
     return x
 
@@ -64,13 +65,13 @@ def calc_dynamic_window(x, config):
     return dw
 
 
-def calc_trajectory(xinit, v, y, config):
+def calc_trajectory(xinit, v, y ,vv, config):
 
     x = np.array(xinit)
     traj = np.array(x)
     time = 0
     while time <= config.predict_time:
-        x = motion(x, [v, y], config.dt)
+        x = motion(x, [v, y, vv], config.dt)
         traj = np.vstack((traj, x))
         time += config.dt
 
@@ -88,24 +89,24 @@ def calc_final_input(x, u, dw, config, goal, ob):
     # evalucate all trajectory with sampled input in dynamic window
     for v in np.arange(dw[0], dw[1], config.v_reso):
         for y in np.arange(dw[2], dw[3], config.yawrate_reso):
-            traj = calc_trajectory(xinit, v, y, config)
+            for vv in np.arange(-dw[1], dw[1], config.v_reso):
+                traj = calc_trajectory(xinit, v, y, vv, config)
+                # calc cost
+                to_goal_cost = calc_to_goal_cost(traj, goal, config)
+                speed_cost = config.speed_cost_gain * \
+                    (config.max_speed - traj[-1, 3])
+                ob_cost = calc_obstacle_cost(traj, ob, config)
+                #print("ob cost: {}".format(ob_cost))
 
-            # calc cost
-            to_goal_cost = calc_to_goal_cost(traj, goal, config)
-            speed_cost = config.speed_cost_gain * \
-                (config.max_speed - traj[-1, 3])
-            ob_cost = calc_obstacle_cost(traj, ob, config)
-            #print("ob cost: {}".format(ob_cost))
+                final_cost = to_goal_cost + speed_cost + ob_cost
 
-            final_cost = to_goal_cost + speed_cost + ob_cost
+                #print (final_cost)
 
-            #print (final_cost)
-
-            # search minimum trajectory
-            if min_cost >= final_cost:
-                min_cost = final_cost
-                min_u = [v, y]
-                best_traj = traj
+                # search minimum trajectory
+                if min_cost >= final_cost:
+                    min_cost = final_cost
+                    min_u = [v, y, vv]
+                    best_traj = traj
 
     return min_u, best_traj
 
@@ -117,8 +118,8 @@ def calc_obstacle_cost(traj, ob, config):
     minr = float("inf")
 
     for ii in range(0, len(traj[:, 1]), skip_n):
-        x = int(traj[ii, 0]*10)
-        y = int(traj[ii, 1]*10)
+        x = min(int(traj[ii, 0]*10), 79)
+        y = min(int(traj[ii, 1]*10), 49)
         ox, oy = ob[y, x]
         dx = (traj[ii, 0]) - ox
         dy = (traj[ii, 1]) - oy
@@ -231,7 +232,7 @@ class DynamicWindow():
 def main(gx, gy, ob):
     print(__file__ + " start!!")
     # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
-    x = np.array([0.5, 0.5, math.pi / 8.0, 0.0, 0.0])
+    x = np.array([0.5, 0.5, math.pi / 8.0, 0.0, 0.0, 0.0])
     # goal position [x(m), y(m)]
     goal = np.array([gx, gy])
     # obstacles [x(m) y(m), ....]
@@ -256,12 +257,12 @@ def main(gx, gy, ob):
                    ])
     '''
 
-    u = np.array([0.0, 0.0])
+    u = np.array([0.0, 0.0, 0.0])
     config = Config()
     traj = np.array(x)
 
     for i in range(1000):
-        tic = time.time() 
+        tic = time.time()
         u, ltraj = dwa_control(x, u, config, goal, ob)
         print(time.time()-tic)
 
@@ -289,6 +290,7 @@ def main(gx, gy, ob):
             break
 
     print("Done")
+    plt.close()
     if show_animation:
         plt.plot(traj[:, 0], traj[:, 1], "-r")
         plt.pause(0.0001)
