@@ -40,11 +40,13 @@ for i_episode in range(num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
+        '''
         if state[5] > 0:
             action[4] = +1.0
         else:
             action[4] = 0.0
-        #action = agent.select_action(state, True)
+        '''
+        action = agent.select_action(state, True)
 
         next_state, reward, done, info = env.step(action)
 

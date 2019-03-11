@@ -67,11 +67,11 @@ class DQNAgent():
         self.steps_done = 0
         self.target = (-10, -10)
         self.move = NewMove()
-        icra_map = Map(80, 50)
+        icra_map = Map(40, 25)
         grid = icra_map.getGrid()
-        grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
+        #grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
         grid = 1 - grid
-        self.grid = torch.from_numpy(grid)
+        self.grid = torch.from_numpy(grid).to(device)
 
     def select_action(self, state, is_test=False):
         device = self.device
@@ -99,10 +99,20 @@ class DQNAgent():
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
                 x = max_col_max_indice.item()
                 y = col_max_indice[x].item()
-                x = x/17.0*8.0
-                y = y/17.0*5.0
+                x = x/40.0*8.0
+                y = y/25.0*5.0
         else:
-            x, y = random.random()*8.0, random.random()*5.0
+            value_map = torch.randn(25, 40).double().to(device)
+            value_map *= self.grid
+            #plt.imshow(value_map.numpy())
+            #plt.show()
+            col_max, col_max_indice = value_map.max(0)
+            max_col_max, max_col_max_indice = col_max.max(0)
+            x = max_col_max_indice.item()
+            y = col_max_indice[x].item()
+            x = x/40.0*8.0
+            y = y/25.0*5.0
+            #x, y = random.random()*8.0, random.random()*5.0
 
         self.target = (x, y)
         self.move.setGoal(pos, self.target)

@@ -8,26 +8,24 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.fc = nn.Sequential(
             nn.ReLU(),
-            nn.Linear(9, 25),
+            nn.Linear(9, 40),
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 5x5 -> 7x7
+            nn.ConvTranspose2d(1, 1, kernel_size=(5,9)), # 5x8 -> 9x16
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 7x7 -> 9x9
+            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 13x22
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 11x11
+            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 17x28
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 13x13
+            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 21x34
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 15x15
-            nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 17x17
+            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 25x40
         )
 
     def forward(self, s):
         batch_size = s.size(0)
         feature_map = self.fc(s)
-        feature_map = feature_map.reshape(batch_size, 1, 5, 5)
+        feature_map = feature_map.reshape(batch_size, 1, 5, 8)
         value_map = self.dconv(feature_map)
         return value_map

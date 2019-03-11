@@ -26,7 +26,7 @@ class Config():
         self.max_dyawrate = 400 * math.pi / 180.0  # [rad/ss]
         self.v_reso = 0.05  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
-        self.dt = 0.1  # [s]
+        self.dt = 1/30.0  # [s]
         self.predict_time = 2.0  # [s]
         self.to_goal_cost_gain = 1.0
         self.speed_cost_gain = 1.0
@@ -37,8 +37,8 @@ def motion(x, u, dt):
     # motion model
 
     x[2] += u[1] * dt # u:velocity.u1: angle=>chuizhi velocity  u0: linar, x:position x0:x,x1:y,x2:angle
-    x[0] += u[0] * math.cos(x[2]) * dt - u[2] * math.sin(x[2]) * dt
-    x[1] += u[0] * math.sin(x[2]) * dt + u[2] * math.cos(x[2]) * dt
+    x[0] += u[0] * math.cos(x[2]) * dt + u[2] * math.sin(x[2]) * dt
+    x[1] += u[0] * math.sin(x[2]) * dt - u[2] * math.cos(x[2]) * dt
     x[3] = u[0]
     x[4] = u[1]
     x[5] = u[2]
@@ -219,20 +219,23 @@ class DynamicWindow():
         self.config = Config()
 
     def moveTo(self, action, pos, vel, angle, goal):
-        vel = math.sqrt(vel[0]**2+vel[1]**2)
-        x = np.array([pos[0], pos[1], angle, vel, 0.0])
-        u = np.array([vel, 0.0])
+        # vel = math.sqrt(vel[0]**2+vel[1]**2)
+        x = np.array([pos[0], pos[1], angle, 0.0, 0.0, 0.0])
+        u = np.array([vel[0]*math.cos(angle) + vel[1]*math.sin(angle), 0.0,
+            vel[0]*math.sin(angle) - vel[1]*math.cos(angle)])
+        x[-3:] = u[-3:]
         u, ltraj = dwa_control(x, u, self.config, goal, self.ob)
-        print(pos, goal, u)
-        action[0] = u[0]
+        #print(pos, goal, u)
+        action[0] = u[0] * 2
         action[1] = u[1]
+        action[2] = u[2]
         return action
 
 
 def main(gx, gy, ob):
     print(__file__ + " start!!")
-    # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
-    x = np.array([0.5, 0.5, math.pi / 8.0, 0.0, 0.0, 0.0])
+    # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s), v_n(m/s)]
+    x = np.array([0.5, 0.5, math.pi / 2.0, 0.0, 0.0, 0.0])
     # goal position [x(m), y(m)]
     goal = np.array([gx, gy])
     # obstacles [x(m) y(m), ....]
@@ -264,7 +267,8 @@ def main(gx, gy, ob):
     for i in range(1000):
         tic = time.time()
         u, ltraj = dwa_control(x, u, config, goal, ob)
-        print(time.time()-tic)
+        print(u)
+        #print(time.time()-tic)
 
         x = motion(x, u, config.dt)
         traj = np.vstack((traj, x))  # store state history
@@ -301,4 +305,4 @@ def main(gx, gy, ob):
 if __name__ == '__main__':
     dy = DynamicWindow()
     ob = dy.ob
-    main(6.5, 4.5, ob)
+    main(1.5, 0.5, ob)

@@ -39,8 +39,8 @@ class HandAgent():
                 if self.move.done or ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 4):
                     value_map = torch.randn(25, 40).double()
                     value_map *= self.grid
-                    plt.imshow(value_map.numpy())
-                    plt.show()
+                    #plt.imshow(value_map.numpy())
+                    #plt.show()
                     col_max, col_max_indice = value_map.max(0)
                     max_col_max, max_col_max_indice = col_max.max(0)
                     x = max_col_max_indice.item()

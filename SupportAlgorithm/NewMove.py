@@ -20,7 +20,7 @@ BORDER_POS = [(1.525, 1.9), (6.475, 3.1),
 BORDER_BOX = [(0.125, 0.5), (0.125, 0.5), 
               (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
-ROBOT_SIZE = 0.4
+ROBOT_SIZE = 0.01
 
 POLYGON_SETTINGS = {
     'edgecolor': 'black',
@@ -205,14 +205,15 @@ class NewMove():
         return path
 
     def setGoal(self, start, goal):
-        print(start, goal)
+        #print(start, goal)
         self.path = self.findPath(start, goal)
         #if len(self.path) == 0:
             #self.done = True
             #return
         self.index = 1
-        self.next_target = self.path[1]
-        self.done = False
+        if len(self.path) > 1:
+            self.next_target = self.path[1]
+            self.done = False
 
     def moveTo(self, pos, vel, angle, action):
         if self.done:
@@ -225,9 +226,9 @@ class NewMove():
                 self.done = True
                 action[0], action[1], action[2] = 0, 0, 0
                 return action
-        tic = time.time()
+        #tic = time.time()
         action = self.dynamic.moveTo(action, pos, vel, angle, self.next_target)
-        print(time.time() - tic)
+        #print(time.time() - tic)
         '''
         u = np.array([
             self.next_target[0]-pos[0],
@@ -253,5 +254,5 @@ class NewMove():
 if __name__ == "__main__":
     move = NewMove()
     move.plot()
-    start, goal= (0.5, 0.5), (4.5, 0.5)
+    start, goal= (0.5, 4.5), (1.5, 4.5)
     print(move.findPath(start, goal))
