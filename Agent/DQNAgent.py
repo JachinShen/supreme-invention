@@ -84,6 +84,7 @@ class DQNAgent():
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         angle = state[4]
+        angular = state[5]
         state = torch.tensor(state).to(device).unsqueeze(0).double()
         self.state = state
         sample = random.random()
@@ -115,10 +116,13 @@ class DQNAgent():
             #x, y = random.random()*8.0, random.random()*5.0
 
         self.target = (x, y)
-        self.move.setGoal(pos, self.target)
+        try:
+            self.move.setGoal(pos, self.target)
+        except:
+            return action
         self.steps_done += 1
 
-        action = self.move.moveTo(pos, vel, angle, action)
+        action = self.move.moveTo(pos, vel, angle, angular, action)
         return action
 
     def push(self, next_state, reward):

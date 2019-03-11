@@ -9,7 +9,7 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.fc = nn.Sequential(
             nn.ReLU(),
-            nn.Linear(9, 40),
+            nn.Linear(10, 40),
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(

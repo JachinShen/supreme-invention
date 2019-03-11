@@ -59,10 +59,10 @@ class Map():
         self.scale_y = scale_y
 
         for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
-            for idx in range(int((x-w-0.25)*scale_x), int((x+w+0.5)*scale_x)):
+            for idx in range(int((x-w-0.3)*scale_x), int((x+w+0.6)*scale_x)):
                 if idx < 0 or idx >= width:
                     continue
-                for idy in range(int((y-h-0.25)*scale_y), int((y+h+0.5)*scale_y)):
+                for idy in range(int((y-h-0.3)*scale_y), int((y+h+0.6)*scale_y)):
                     if idy < 0 or idy >= height:
                         continue
                     index_x.append(idx)

@@ -102,11 +102,11 @@ class ICRAField(gym.Env, EzPickle):
         self.supply_areas = SupplyAreas()
 
         self.state_dict["robot_0"] = {
-            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0),
+            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
             "robot_0": (-1, -1), "robot_1": (-1, -1)
         }
         self.state_dict["robot_1"] = {
-            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0),
+            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
             "robot_0": (-1, -1), "robot_1": (-1, -1)
         }
         self.actions["robot_0"] = None
@@ -118,12 +118,12 @@ class ICRAField(gym.Env, EzPickle):
         robot_state = self.state_dict[robot_id]
         pos = robot_state["pos"]
         velocity = robot_state["velocity"]
-        velocity = robot_state["velocity"]
         angle = robot_state["angle"]
+        angular = robot_state["angular"]
         health = robot_state["health"]
         robot_0 = robot_state["robot_0"]
         robot_1 = robot_state["robot_1"]
-        return [pos[0], pos[1], velocity[0], velocity[1], angle,
+        return [pos[0], pos[1], velocity[0], velocity[1], angle, angular,
                 robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
 
     def stepCollision(self):
@@ -190,6 +190,7 @@ class ICRAField(gym.Env, EzPickle):
         self.state_dict[robot_id]["pos"] = self.robots[robot_id].getPos()
         self.state_dict[robot_id]["angle"] = self.robots[robot_id].getAngle()
         self.state_dict[robot_id]["velocity"] = self.robots[robot_id].getVelocity()
+        self.state_dict[robot_id]["angular"] = self.robots[robot_id].hull.angularVelocity
 
     def setRobotAction(self, robot_id, action):
         self.actions[robot_id] = action
@@ -422,14 +423,15 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (6.5, 4.5)   # origin (0.5, 0.5)
-        move.setGoal(pos, target)
+        target = (2.5, 4.5)   # origin (0.5, 0.5)
+        move.setGoal(pos, target, 0.0)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
             angle = s[4]
-            a = move.moveTo(pos, vel, angle, a)
+            angular = env.state_dict["robot_0"]["angular"]
+            a = move.moveTo(pos, vel, angle, angular, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

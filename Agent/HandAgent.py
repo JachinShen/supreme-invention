@@ -28,6 +28,7 @@ class HandAgent():
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         angle = state[4]
+        angular = state[5]
         if state[-1] > 0 and state[-3] > 0:
             action[4] = +1.0
         else:
@@ -52,9 +53,12 @@ class HandAgent():
                     self.target = (x, y)
                     #self.target = (7.5, 0.5)
                     #print(pos, self.target)
-                    self.move.setGoal(pos, self.target)
+                    try:
+                        self.move.setGoal(pos, self.target)
+                    except:
+                        return action
         self.ctr += 1
 
-        new_action = self.move.moveTo(pos, vel, angle, action)
+        new_action = self.move.moveTo(pos, vel, angle, angular, action)
 
         return new_action
