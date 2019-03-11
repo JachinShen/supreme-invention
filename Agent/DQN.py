@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
+
 
 class DQN(nn.Module):
     def __init__(self):
@@ -12,15 +13,15 @@ class DQN(nn.Module):
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(1, 1, kernel_size=(5,9)), # 5x8 -> 9x16
+            nn.ConvTranspose2d(1, 1, kernel_size=(5, 9)),  # 5x8 -> 9x16
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 13x22
+            nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 13x22
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 17x28
+            nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 17x28
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 21x34
+            nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 21x34
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 1, kernel_size=(5,7)), # 25x40
+            nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 25x40
         )
 
     def forward(self, s):

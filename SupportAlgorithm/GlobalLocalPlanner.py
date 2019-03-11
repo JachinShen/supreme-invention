@@ -1,23 +1,27 @@
+import math
 import sys
 import time
-import math
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+from extremitypathfinder.extremitypathfinder import \
+    PolygonEnvironment as Environment
 from matplotlib.patches import Polygon
-from extremitypathfinder.extremitypathfinder import PolygonEnvironment as Environment
-sys.path.append(".")
+
 from SupportAlgorithm.DynamicWindow import DynamicWindow
+
+sys.path.append(".")
 
 WIDTH = 160
 HEIGHT = 100
 MINBIAS = 0.03
 
-MAXVELOCITY =1000
+MAXVELOCITY = 1000
 ACC = 1
 
-BORDER_POS = [(1.525, 1.9), (6.475, 3.1), 
+BORDER_POS = [(1.525, 1.9), (6.475, 3.1),
               (1.7, 3.875), (4, 2.5), (6.3, 1.125)]
-BORDER_BOX = [(0.125, 0.5), (0.125, 0.5), 
+BORDER_BOX = [(0.125, 0.5), (0.125, 0.5),
               (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the weight and height
 
 ROBOT_SIZE = 0.01
@@ -37,6 +41,7 @@ show_animation = True
 
 max_accel = 1.0  # max accel [m/ss]
 max_jerk = 0.5  # max jerk [m/sss]
+
 
 class quinic_polynomial:
 
@@ -142,8 +147,10 @@ def draw_internal_graph(map, ax):
 
 
 def set_limits(map, ax):
-    ax.set_xlim((min(map.boundary_polygon.coordinates[:, 0]) - 1, max(map.boundary_polygon.coordinates[:, 0]) + 1))
-    ax.set_ylim((min(map.boundary_polygon.coordinates[:, 1]) - 1, max(map.boundary_polygon.coordinates[:, 1]) + 1))
+    ax.set_xlim((min(map.boundary_polygon.coordinates[:, 0]) - 1, max(
+        map.boundary_polygon.coordinates[:, 0]) + 1))
+    ax.set_ylim((min(map.boundary_polygon.coordinates[:, 1]) - 1, max(
+        map.boundary_polygon.coordinates[:, 1]) + 1))
 
 
 def draw_path(vertex_path):
@@ -166,17 +173,22 @@ def draw_prepared_map(map):
     if SHOW_PLOTS:
         plt.show()
 
-class NewMove():
+
+class GlobalLocalPlanner():
     def __init__(self):
         self.environment = Environment()
 
         # counter clockwise vertex numbering!
         boundary_coordinates = [
-            (0+ROBOT_SIZE, 0+ROBOT_SIZE), 
-            (3.25-ROBOT_SIZE, 0+ROBOT_SIZE), (3.25-ROBOT_SIZE, 1.0+ROBOT_SIZE), (3.5+ROBOT_SIZE, 1.0+ROBOT_SIZE), (3.5+ROBOT_SIZE, 0+ROBOT_SIZE), 
+            (0+ROBOT_SIZE, 0+ROBOT_SIZE),
+            (3.25-ROBOT_SIZE, 0+ROBOT_SIZE), (3.25-ROBOT_SIZE, 1.0+ROBOT_SIZE),
+            (3.5 + ROBOT_SIZE, 1.0+ROBOT_SIZE), (3.5+ROBOT_SIZE, 0+ROBOT_SIZE),
             (8.0-ROBOT_SIZE, 0+ROBOT_SIZE),
-            (8.0-ROBOT_SIZE, 5.0-ROBOT_SIZE), 
-            (8.0-3.25+ROBOT_SIZE, 5.0-ROBOT_SIZE), (8.0-3.25+ROBOT_SIZE, 4.0-ROBOT_SIZE), (8.0-3.5-ROBOT_SIZE, 4.0-ROBOT_SIZE), (8.0-3.5-ROBOT_SIZE, 5.0-ROBOT_SIZE), 
+            (8.0-ROBOT_SIZE, 5.0-ROBOT_SIZE),
+            (8.0-3.25+ROBOT_SIZE, 5.0-ROBOT_SIZE),
+            (8.0 - 3.25+ROBOT_SIZE, 4.0-ROBOT_SIZE),
+            (8.0 - 3.5-ROBOT_SIZE, 4.0-ROBOT_SIZE),
+            (8.0 - 3.5-ROBOT_SIZE, 5.0-ROBOT_SIZE),
             (0+ROBOT_SIZE, 5.0-ROBOT_SIZE)
         ]
 
@@ -189,10 +201,10 @@ class NewMove():
                 ((x-w-ROBOT_SIZE), (y+h+ROBOT_SIZE)),
                 ((x+w+ROBOT_SIZE), (y+h+ROBOT_SIZE)),
                 ((x+w+ROBOT_SIZE), (y-h-ROBOT_SIZE)),
-                ])
+            ])
 
-
-        self.environment.store(boundary_coordinates, list_of_holes, validate=False)
+        self.environment.store(boundary_coordinates,
+                               list_of_holes, validate=False)
         self.environment.prepare()
         self.done = True
         self.dynamic = DynamicWindow()
@@ -207,9 +219,9 @@ class NewMove():
     def setGoal(self, start, goal):
         #print(start, goal)
         self.path = self.findPath(start, goal)
-        #if len(self.path) == 0:
-            #self.done = True
-            #return
+        # if len(self.path) == 0:
+        #self.done = True
+        # return
         self.index = 1
         if len(self.path) > 1:
             self.next_target = self.path[1]
@@ -252,7 +264,7 @@ class NewMove():
 
 
 if __name__ == "__main__":
-    move = NewMove()
+    move = GlobalLocalPlanner()
     move.plot()
-    start, goal= (0.5, 4.5), (1.5, 4.5)
+    start, goal = (0.5, 4.5), (1.5, 4.5)
     print(move.findPath(start, goal))

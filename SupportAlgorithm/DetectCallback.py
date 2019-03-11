@@ -1,9 +1,11 @@
 from Box2D import b2RayCastCallback
 
+
 class detectCallback(b2RayCastCallback):
     """
     This class captures the closest hit shape.
     """
+
     def __init__(self, **kwargs):
         b2RayCastCallback.__init__(self)
         self.userData = None
@@ -16,5 +18,5 @@ class detectCallback(b2RayCastCallback):
     def ReportFixture(self, fixture, point, normal, fraction):
         self.userData = fixture.userData
         self.point = fixture.body.position
-        #print(self.userData)
+        # print(self.userData)
         return fraction

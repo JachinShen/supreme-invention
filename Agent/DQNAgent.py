@@ -1,22 +1,22 @@
 '''
 https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
-import random
 import math
-import Box2D
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
+import random
 from collections import namedtuple
 from itertools import count
 
+import Box2D
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
 
-from SupportAlgorithm.NewMove import NewMove
+import cv2
 from Agent.DQN import DQN
+from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
 from util.Grid import Map
 
 BATCH_SIZE = 128
@@ -66,7 +66,7 @@ class DQNAgent():
 
         self.steps_done = 0
         self.target = (-10, -10)
-        self.move = NewMove()
+        self.move = GlobalLocalPlanner()
         icra_map = Map(40, 25)
         grid = icra_map.getGrid()
         #grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
@@ -93,8 +93,8 @@ class DQNAgent():
             with torch.no_grad():
                 value_map = self.policy_net(state)[0][0]
                 value_map *= self.grid
-                #plt.imshow(value_map.numpy())
-                #plt.show()
+                # plt.imshow(value_map.numpy())
+                # plt.show()
                 col_max, col_max_indice = value_map.max(dim=0)
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
                 x = max_col_max_indice.item()
@@ -104,8 +104,8 @@ class DQNAgent():
         else:
             value_map = torch.randn(25, 40).double().to(device)
             value_map *= self.grid
-            #plt.imshow(value_map.numpy())
-            #plt.show()
+            # plt.imshow(value_map.numpy())
+            # plt.show()
             col_max, col_max_indice = value_map.max(0)
             max_col_max, max_col_max_indice = col_max.max(0)
             x = max_col_max_indice.item()

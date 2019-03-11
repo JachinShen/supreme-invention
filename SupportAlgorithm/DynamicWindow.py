@@ -2,14 +2,16 @@
 Mobile robot motion planning sample with Dynamic Window Approach
 author: Atsushi Sakai (@Atsushi_twi)
 """
-import time
 import math
-import numpy as np
-import matplotlib.pyplot as plt
-
 import sys
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from Referee.ICRAMap import BORDER_BOX, BORDER_POS
+
 sys.path.append(".")
-from Referee.ICRAMap import BORDER_POS, BORDER_BOX
 
 show_animation = True
 
@@ -36,7 +38,8 @@ class Config():
 def motion(x, u, dt):
     # motion model
 
-    x[2] += u[1] * dt # u:velocity.u1: angle=>chuizhi velocity  u0: linar, x:position x0:x,x1:y,x2:angle
+    # u:velocity.u1: angle=>chuizhi velocity  u0: linar, x:position x0:x,x1:y,x2:angle
+    x[2] += u[1] * dt
     x[0] += u[0] * math.cos(x[2]) * dt + u[2] * math.sin(x[2]) * dt
     x[1] += u[0] * math.sin(x[2]) * dt - u[2] * math.cos(x[2]) * dt
     x[3] = u[0]
@@ -65,7 +68,7 @@ def calc_dynamic_window(x, config):
     return dw
 
 
-def calc_trajectory(xinit, v, y ,vv, config):
+def calc_trajectory(xinit, v, y, vv, config):
 
     x = np.array(xinit)
     traj = np.array(x)
@@ -180,6 +183,7 @@ def plot_arrow(x, y, yaw, length=0.5, width=0.1):  # pragma: no cover
               head_length=width, head_width=width)
     plt.plot(x, y)
 
+
 def calc_repulsive_potential(x, y, ox, oy, rr):
     # search nearest obstacle
     minid = -1
@@ -194,6 +198,7 @@ def calc_repulsive_potential(x, y, ox, oy, rr):
     # calc repulsive potential
     #dq = np.hypot(x - ox[minid], y - oy[minid])
     return np.array([ox[minid], oy[minid]])
+
 
 class DynamicWindow():
     def __init__(self):
@@ -222,7 +227,7 @@ class DynamicWindow():
         # vel = math.sqrt(vel[0]**2+vel[1]**2)
         x = np.array([pos[0], pos[1], angle, 0.0, 0.0, 0.0])
         u = np.array([vel[0]*math.cos(angle) + vel[1]*math.sin(angle), 0.0,
-            vel[0]*math.sin(angle) - vel[1]*math.cos(angle)])
+                      vel[0]*math.sin(angle) - vel[1]*math.cos(angle)])
         x[-3:] = u[-3:]
         u, ltraj = dwa_control(x, u, self.config, goal, self.ob)
         #print(pos, goal, u)
@@ -268,7 +273,7 @@ def main(gx, gy, ob):
         tic = time.time()
         u, ltraj = dwa_control(x, u, config, goal, ob)
         print(u)
-        #print(time.time()-tic)
+        # print(time.time()-tic)
 
         x = motion(x, u, config.dt)
         traj = np.vstack((traj, x))  # store state history
@@ -281,7 +286,7 @@ def main(gx, gy, ob):
             plt.plot(ltraj[:, 0], ltraj[:, 1], "-g")
             plt.plot(x[0], x[1], "xr")
             plt.plot(goal[0], goal[1], "xb")
-            #plt.imshow(ob[:,:])
+            # plt.imshow(ob[:,:])
             plt.plot(ox, oy, "ok")
             plot_arrow(x[0], x[1], x[2])
             plt.axis("equal")

@@ -2,18 +2,19 @@
 https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import random
-import torch
-import numpy as np
 from collections import namedtuple
 from itertools import count
 
-from ICRAField import ICRAField
+import numpy as np
+import torch
+
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
+from ICRAField import ICRAField
 
 TARGET_UPDATE = 10
 
-seed = 14 
+seed = 14
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
@@ -22,7 +23,7 @@ random.seed(seed)
 env = ICRAField()
 agent = DQNAgent()
 agent2 = HandAgent()
-#agent.load()
+# agent.load()
 device = agent.device
 episode_durations = []
 

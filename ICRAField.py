@@ -1,25 +1,23 @@
-import sys
 import math
 import random
-import numpy as np
+import sys
 
 import Box2D
-
 import gym
-from gym import spaces
-from gym.utils import colorize, seeding, EzPickle
-
+import numpy as np
 import pyglet
+from gym import spaces
+from gym.utils import EzPickle, colorize, seeding
 from pyglet import gl
 
-from Objects.Robot import Robot
 from Objects.Bullet import Bullet
-from Referee.ICRAMap import ICRAMap
+from Objects.Robot import Robot
 from Referee.BuffArea import AllBuffArea
-from Referee.SupplyArea import SupplyAreas
 from Referee.ICRAContactListener import ICRAContactListener
+from Referee.ICRAMap import ICRAMap
+from Referee.SupplyArea import SupplyAreas
 from SupportAlgorithm.DetectCallback import detectCallback
-from SupportAlgorithm.NewMove import NewMove
+from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -414,7 +412,7 @@ if __name__ == "__main__":
         env.monitor.start('/tmp/video-test', force=True)
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
-    move = NewMove()
+    move = GlobalLocalPlanner()
     while True:
         env.reset()
         total_reward = 0.0
@@ -425,7 +423,7 @@ if __name__ == "__main__":
         vel = (s[2], s[3])
         ang = s[4]
         target = (6.5, 4.5)   # origin (0.5, 0.5)
-        move.setGoal(pos,target)
+        move.setGoal(pos, target)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
