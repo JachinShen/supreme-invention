@@ -28,8 +28,8 @@ class Config():
         self.v_reso = 0.1  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
         self.dt = 1/30.0  # [s]
-        self.predict_time = 3.0  # [s]
-        self.to_goal_cost_gain = 100.0
+        self.predict_time = 2.0  # [s]
+        self.to_goal_cost_gain = 1000.0
         self.speed_cost_gain = 100.0
         self.robot_radius = 0.4  # [m]
 
@@ -362,4 +362,4 @@ def main(gx, gy, ob):
 if __name__ == '__main__':
     dy = DynamicWindow()
     ob = dy.ob
-    main(2.21, 3.74, ob)
+    main(1.5, 0.5, ob)
