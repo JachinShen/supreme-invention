@@ -2,7 +2,8 @@ import numpy as np
 import math
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape, fixtureDef)
-import cv2
+#import cv2
+import matplotlib.pyplot as plt
 import os
 
 # Top-down car dynamics simulation.
@@ -52,7 +53,7 @@ class ICRAMap:
 
             self.drawlist = self.borders
 
-        self.image_file = 'map.jpg'
+        self.image_file = 'map.npy'
         self.image = self.imread_map()
 
     def step(self, dt):
@@ -73,34 +74,47 @@ class ICRAMap:
 
     def imread_map(self):
         if(not os.path.isfile(self.image_file)):
-            self.imwrite_map(self.image_file)
+            return self.imwrite_map(self.image_file)
 
-        return cv2.imread(self.image_file, cv2.IMREAD_GRAYSCALE)
+        #return np.load(self.image_file)
 
     def imwrite_map(self, image_file):
         width = 80
         height = 50
         times = 10
-        img = np.zeros((height, width))
-        obstacle_pos = [(int(x * times), int(y * times)) for x, y in OBSTACLE_POS]
-        obstacle_box = [(int(x * times), int(y * times)) for x, y in OBSTACLE_BOX]
+        margin = 3
+        img = np.ones((height, width))
+        pos = np.array(OBSTACLE_POS + BORDER_POS) * times
+        box = np.array(OBSTACLE_BOX + BORDER_BOX) * times
+        pos = pos.astype("int")
+        box = box.astype("int")
+        #obstacle_pos = [(int(x * times), int(y * times)) for x, y in OBSTACLE_POS]
+        #obstacle_box = [(int(x * times), int(y * times)) for x, y in OBSTACLE_BOX]
 
-        for p, b in zip(obstacle_pos, obstacle_box):
-            left = p[0] - b[0]
-            right = p[0] + b[0]
-            top = height - p[1] + b[1]
-            bottom = height - p[1] - b[1]
+        for p, b in zip(pos, box):
+            left = p[0] - b[0] - margin
+            right = p[0] + b[0] + margin
+            top = p[1] + b[1] + margin
+            bottom = p[1] - b[1] - margin
+            left = max(0, left)
+            right = min(80, right)
+            bottom = max(0, bottom)
+            top = min(50, top)
+            #top = height - p[1] + b[1]
+            #bottom = height - p[1] - b[1]
 
-            img[bottom:top, left:right] = np.full((top - bottom, right - left), 255)
+            img[bottom:top, left:right] = np.zeros((top - bottom, right - left))
 
-        cv2.imwrite(self.image_file, img)
+        #np.save(image_file, img)
+        return img
 
 
 if __name__ == '__main__':
     m = ICRAMap()
-    cv2.imshow('x', m.image)
-    print(m.image.shape)
-    cv2.waitKey()
+    plt.ylim(0, 49)
+    plt.xlim(0, 79)
+    plt.imshow(m.image)
+    plt.show()
 
 
 

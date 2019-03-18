@@ -14,6 +14,7 @@ from Objects.Robot import ROBOT_SIZE,SIZE
 
 MAXSCALE = 20
 
+
 BIAS = 0.5
 BODYSIZE = SIZE*ROBOT_SIZE*1.4
 
