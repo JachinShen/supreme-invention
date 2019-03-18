@@ -423,7 +423,7 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (2.5, 4.5)   # origin (0.5, 0.5)
+        target = (3.5, 4.5)   # origin (0.5, 0.5)
         move.setGoal(pos, target, 0.0)
         while True:
             s, r, done, info = env.step(a)

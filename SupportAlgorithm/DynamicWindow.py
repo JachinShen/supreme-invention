@@ -20,17 +20,17 @@ class Config():
 
     def __init__(self):
         # robot parameter
-        self.max_speed = 1.0  # [m/s]
-        self.min_speed = 0.1  # [m/s]
+        self.max_speed = 2.0  # [m/s]
+        self.min_speed = 0.05  # [m/s]
         self.max_yawrate = 180 * math.pi / 180.0  # [rad/s]  #40
-        self.max_accel = 5.0  # [m/ss]
+        self.max_accel = 3.0  # [m/ss]
         self.max_dyawrate = 400 * math.pi / 180.0  # [rad/ss]
-        self.v_reso = 0.1  # [m/s]
+        self.v_reso = 0.05  # [m/s]
         self.yawrate_reso = 1 * math.pi / 180.0  # [rad/s]
         self.dt = 1/30.0  # [s]
         self.predict_time = 2.0  # [s]
-        self.to_goal_cost_gain = 1000.0
-        self.speed_cost_gain = 100.0
+        self.to_goal_cost_gain = 100.0
+        self.speed_cost_gain = 10.0
         self.robot_radius = 0.4  # [m]
 
 
@@ -362,4 +362,4 @@ def main(gx, gy, ob):
 if __name__ == '__main__':
     dy = DynamicWindow()
     ob = dy.ob
-    main(1.5, 0.5, ob)
+    main(3.5, 4.5, ob)

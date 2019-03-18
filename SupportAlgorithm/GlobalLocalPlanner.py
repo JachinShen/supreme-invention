@@ -175,12 +175,12 @@ class GlobalLocalPlanner():
     def moveTo(self, pos, vel, angle, angular, action):
         if self.done:
             return action
-        if self.distance(pos, self.next_target) < 0.5:
+        if self.distance(pos, self.next_target) < 0.4:
             self.index += 1
             if self.index < len(self.path):
                 self.next_target = self.path[self.index]
                 self.next_angle = self.angle_path[self.index-1]
-                #print("new target: {}".format(self.next_target))
+                print("new target: {}".format(self.next_target))
             else:
                 self.done = True
                 action[0], action[1], action[2] = 0, 0, 0
