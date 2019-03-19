@@ -223,7 +223,7 @@ class ICRAField(gym.Env, EzPickle):
         if self.actions["robot_0"] is not None:
             self.reward = self.robots["robot_0"].health - \
                 self.robots["robot_1"].health
-            self.reward -= 0.1 * self.t * FPS
+            self.reward -= 1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
