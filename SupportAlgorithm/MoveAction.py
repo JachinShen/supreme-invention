@@ -12,7 +12,7 @@ from util.Grid import map2grid, view_path, grid2world, world2grid
 
 WIDTH = 200
 HEIGHT = 120
-MINBIAS = 0.03
+MINBIAS = 0.6
 
 MAXVELOCITY =1000
 ACC = 1
@@ -28,10 +28,10 @@ class MoveAction:
         self.target_grid = world2grid(target)
         self.selfpos_gird = world2grid(pos)
         tic = time.time()
-        print(DUNGEON)
+        #print(DUNGEON)
         path = astar(DUNGEON, WIDTH, HEIGHT, self.selfpos_gird, 0, self.target_grid)
-        print(path)
-        print("Astar: {}".format(time.time()-tic))
+        #print(path)
+        #print("Astar: {}".format(time.time()-tic))
         self.path = pathprocess(path)
         self.tonext = 1000
         self.velocity = vel

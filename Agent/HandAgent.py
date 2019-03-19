@@ -7,9 +7,57 @@ import torch
 
 import cv2
 from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
+from SupportAlgorithm.MoveAction import MoveAction
+from SupportAlgorithm.NaiveMove import NaiveMove
 from util.Grid import Map
 
+class HandAgent():
+    def __init__(self):
+        self.path = [
+            [4.0, 3.0],
+            [3.5, 4.7],
+            [0.5, 4.5],
+            [0.5, 3.0],
+            [2.5, 3.0],
+            [4.0, 1.5],
+            [7.5, 2.0],
+            [7.5, 4.5],
+        ]
+        self.index = 0
+        self.target = self.path[self.index]
+        self.move = NaiveMove()
 
+    def reset(self):
+        self.index = 0
+        self.target = self.path[self.index]
+        pass
+
+    def select_action(self, state):
+        action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        pos = (state[0], state[1])
+        vel = (state[2], state[3])
+        angle = state[4]
+        if state[-1] > 0 and state[-3] > 0:
+            pass
+            #action[4] = +1.0
+            #return action
+            #self.target = (state[-4], state[-3])
+            #self.move = MoveAction(self.target, pos, vel, angle)
+        else:
+            action[4] = 0.0
+            if ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 0.1):
+                self.index = (self.index + 1) % len(self.path)
+                self.target = self.path[self.index]
+
+        v, omega = self.move.moveTo(pos, vel, angle, self.target)
+        action[0] = v[0]
+        action[1] = omega
+        action[2] = v[1]
+        return action
+
+        return new_action
+
+'''
 class HandAgent():
     def __init__(self):
         self.target = (random.random()*8.0, random.random()*5.0)
@@ -62,3 +110,4 @@ class HandAgent():
         new_action = self.move.moveTo(pos, vel, angle, angular, action)
 
         return new_action
+'''

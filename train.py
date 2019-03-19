@@ -30,6 +30,7 @@ for i_episode in range(num_episodes):
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     env.reset()
+    agent2.reset()
     state, reward, done, info = env.step(action)
     for t in range(2*60*30):
         if t % (60*30) == 0:
@@ -50,10 +51,12 @@ for i_episode in range(num_episodes):
         # Perform one step of the optimization (on the target network)
         agent.optimize_model()
         if done:
-            print("Simulation end in: {}:{:02d}, reward: {}".format(
-                t//(60*30), t % (60*30)//30, reward))
-            episode_durations.append(t + 1)
             break
+    print("Simulation end in: {}:{:02d}, reward: {}".format(
+        t//(60*30), t % (60*30)//30, reward))
+    episode_durations.append(t + 1)
+    agent2.reset()
+
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()

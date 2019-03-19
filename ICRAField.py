@@ -93,7 +93,7 @@ class ICRAField(gym.Env, EzPickle):
             self.world, np.pi/2, 0.5, 0.5,
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, np.pi / 2, 6.5, 0.5,
+            self.world, -np.pi, 6.5, 4.5,
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
@@ -227,10 +227,10 @@ class ICRAField(gym.Env, EzPickle):
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward -= 10000
+                step_reward -= 1000
             if self.robots["robot_1"].health <= 0:
                 done = True
-                step_reward += 10000
+                step_reward += 1000
             self.prev_reward = self.reward
 
         return self.getStateArray("robot_0"), step_reward, done, {}

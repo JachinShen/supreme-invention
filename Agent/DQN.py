@@ -29,4 +29,5 @@ class DQN(nn.Module):
         feature_map = self.fc(s)
         feature_map = feature_map.reshape(batch_size, 1, 5, 8)
         value_map = self.dconv(feature_map)
+        value_map = torch.sigmoid(value_map)
         return value_map

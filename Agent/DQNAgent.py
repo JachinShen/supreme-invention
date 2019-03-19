@@ -17,6 +17,8 @@ import torch.optim as optim
 import cv2
 from Agent.DQN import DQN
 from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
+from SupportAlgorithm.DynamicWindow import DynamicWindow
+from SupportAlgorithm.NaiveMove import NaiveMove
 from util.Grid import Map
 
 BATCH_SIZE = 128
@@ -66,7 +68,8 @@ class DQNAgent():
 
         self.steps_done = 0
         self.target = (-10, -10)
-        self.move = GlobalLocalPlanner()
+        #self.move = GlobalLocalPlanner()
+        self.move = NaiveMove()
         icra_map = Map(40, 25)
         grid = icra_map.getGrid()
         #grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
@@ -90,31 +93,48 @@ class DQNAgent():
         sample = random.random()
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
             math.exp(-1. * self.steps_done / EPS_DECAY)
+        width, height = 0.8, 0.5
+        left, right, bottom, top = pos[0]-width, pos[0]+width, pos[1]-height, pos[1]+height
+        left, right, bottom, top = int(left*5), int(right*5), int(bottom*5), int(top*5)
+        left, right, bottom, top = max(0,left), min(40,right), max(0,bottom), min(25,top)
         if is_test or sample > eps_threshold:
             with torch.no_grad():
                 value_map = self.policy_net(state)[0][0]
                 value_map *= self.grid
-                # plt.imshow(value_map.numpy())
-                # plt.show()
-                col_max, col_max_indice = value_map.max(dim=0)
-                max_col_max, max_col_max_indice = col_max.max(dim=0)
-                x = max_col_max_indice.item()
-                y = col_max_indice[x].item()
-                x = x/40.0*8.0
-                y = y/25.0*5.0
+
+                #plt.xlim(0,39)
+                #plt.ylim(0,24)
+                #plt.imshow(value_map.numpy())
+                #plt.show()
+
         else:
-            value_map = torch.randn(25, 40).double().to(device)
+            value_map = torch.randn(25, 40).double().to(device) + 10
             value_map *= self.grid
             # plt.imshow(value_map.numpy())
             # plt.show()
-            col_max, col_max_indice = value_map.max(0)
-            max_col_max, max_col_max_indice = col_max.max(0)
-            x = max_col_max_indice.item()
-            y = col_max_indice[x].item()
-            x = x/40.0*8.0
-            y = y/25.0*5.0
-            #x, y = random.random()*8.0, random.random()*5.0
+            #col_max, col_max_indice = value_map.max(0)
+            #max_col_max, max_col_max_indice = col_max.max(0)
+            #x = max_col_max_indice.item()
+            #y = col_max_indice[x].item()
+            ##x = x/40.0*8.0
+            #y = y/25.0*5.0
+        
+        col_max, col_max_indice = value_map[bottom:top,left:right].max(dim=0)
+        max_col_max, max_col_max_indice = col_max.max(dim=0)
+        x = max_col_max_indice.item()
+        y = col_max_indice[x].item()
+        x += left
+        y += bottom
+        x = x/40.0*8.0
+        y = y/25.0*5.0
+   #x, y = random.random()*8.0, random.random()*5.0
 
+        v, omega = self.move.moveTo(pos, vel, angle, [x, y])
+        action[0] = v[0] 
+        action[1] = omega
+        action[2] = v[1]
+        return action
+        '''
         self.target = (x, y)
         try:
             self.move.setGoal(pos, self.target)
@@ -124,6 +144,7 @@ class DQNAgent():
 
         action = self.move.moveTo(pos, vel, angle, angular, action)
         return action
+        '''
 
     def push(self, next_state, reward):
         device = self.device
