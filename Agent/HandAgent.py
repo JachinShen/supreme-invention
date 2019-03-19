@@ -14,6 +14,8 @@ from util.Grid import Map
 class HandAgent():
     def __init__(self):
         self.path = [
+            [5.0, 4.5],
+            [5.0, 3.0],
             [4.0, 3.0],
             [3.5, 4.7],
             [0.5, 4.5],

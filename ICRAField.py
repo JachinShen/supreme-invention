@@ -154,7 +154,7 @@ class ICRAField(gym.Env, EzPickle):
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
             action[5] = +0.0
-        if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+        if action[4] > 0.99 and int(self.t*FPS) % (FPS/1) == 1:
             if(self.robots[robot_name].bullets_num > 0):
                 init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
                 self.bullets.shoot(init_angle, init_pos)

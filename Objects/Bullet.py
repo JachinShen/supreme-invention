@@ -32,7 +32,7 @@ class Bullet:
         bullet.color = (0.0, 0.0, 0.0)
         bullet.userData = "bullet_{}".format(self.ctr)
         self.ctr += 1
-        bullet.linearVelocity = (math.cos(angle)*2, math.sin(angle)*2)
+        bullet.linearVelocity = (math.cos(angle)*10, math.sin(angle)*10)
         self.bullets[bullet.userData] = bullet
 
     def draw(self, viewer):

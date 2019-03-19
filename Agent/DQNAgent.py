@@ -23,10 +23,10 @@ from util.Grid import Map
 
 BATCH_SIZE = 128
 #GAMMA = 0.999
-GAMMA = 0.9
+GAMMA = 0.7
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 200
+EPS_DECAY = 50
 
 Transition = namedtuple(
     'Transition', ('state', 'action', 'next_state', 'reward'))
