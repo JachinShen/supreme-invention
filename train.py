@@ -10,6 +10,9 @@ from itertools import count
 from ICRAField import ICRAField
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
+from SupportAlgorithm.NaiveMove import NaiveMove
+
+move = NaiveMove()
 
 TARGET_UPDATE = 10
 
@@ -41,7 +44,14 @@ for i_episode in range(num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        action = agent.select_action(state, state_obs)
+        goal = agent.select_action(state, state_obs)
+        pos = (state[0], state[1])
+        vel = (state[2], state[3])
+        angle = state[4]
+        v, omega = move.moveTo(pos, vel, angle, goal)
+        action[0] = v[0] 
+        action[1] = omega
+        action[2] = v[1]
         if state[-1] > 0 and state[-3] > 0:
             action[4] = +1.0
         else:

@@ -11,6 +11,9 @@ import torch
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
+from SupportAlgorithm.NaiveMove import NaiveMove
+
+move = NaiveMove()
 
 TARGET_UPDATE = 10
 
@@ -49,7 +52,15 @@ for i_episode in range(num_episodes):
             action[4] = 0.0
         '''
         #action = agent.select_action(state, True)
-        action = agent.select_action(state, state_obs, True)
+        #action = agent.select_action(state, state_obs, True)
+        goal = agent.select_action(state, state_obs, True)
+        pos = (state[0], state[1])
+        vel = (state[2], state[3])
+        angle = state[4]
+        v, omega = move.moveTo(pos, vel, angle, goal)
+        action[0] = v[0] 
+        action[1] = omega
+        action[2] = v[1]
         if state[-1] > 0 and state[-3] > 0:
             action[4] = +1.0
         else:

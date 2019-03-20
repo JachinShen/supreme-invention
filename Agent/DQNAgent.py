@@ -72,7 +72,9 @@ class DQNAgent():
         self.target = (-10, -10)
         #self.move = GlobalLocalPlanner()
         self.move = NaiveMove()
-        icra_map = Map(40, 25)
+        self.width = 40
+        self.height = 25
+        icra_map = Map(self.width, self.height)
         grid = icra_map.getGrid()
         #grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
         #grid = 1 - grid
@@ -161,6 +163,7 @@ class DQNAgent():
                 max_col_max, max_col_max_indice = col_max.max(dim=0)
                 x = max_col_max_indice.item()
                 y = col_max_indice[x].item()
+                self.local_goal = [x, y]
                 x += left
                 y += bottom
                 x = x/40.0*8.0
@@ -173,6 +176,7 @@ class DQNAgent():
             max_col_max, max_col_max_indice = col_max.max(dim=0)
             x = max_col_max_indice.item()
             y = col_max_indice[x].item()
+            self.local_goal = [x, y]
             x += left
             y += bottom
             x = x/40.0*8.0
@@ -188,11 +192,7 @@ class DQNAgent():
         
    #x, y = random.random()*8.0, random.random()*5.0
 
-        v, omega = self.move.moveTo(pos, vel, angle, [x, y])
-        action[0] = v[0] 
-        action[1] = omega
-        action[2] = v[1]
-        return action
+        return [x, y]
         '''
         self.target = (x, y)
         try:
@@ -207,11 +207,12 @@ class DQNAgent():
 
     def push(self, next_state, reward):
         device = self.device
-        target = torch.tensor(self.target, device=device).double()
+        goal = torch.Tensor(self.local_goal).to(device).long().unsqueeze(0)
+        #target = torch.tensor(self.target, device=device).double()
         #next_state = torch.tensor(next_state).to(device).double()
         next_state = (next_state).to(device).double()
-        reward = torch.tensor([reward], device=device).double()
-        self.memory.push(self.state_obs, target, next_state, reward)
+        reward = torch.tensor([reward], device=device).double().unsqueeze(0)
+        self.memory.push(self.state_obs, goal, next_state, reward)
 
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
@@ -237,10 +238,20 @@ class DQNAgent():
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
         state_batch = Variable(state_batch, requires_grad=True)
-        state_action_values = self.policy_net(state_batch)
+        state_action_values = self.policy_net(state_batch) # batch, 1, 5, 8
+        #state_action_values = state_action_values.sequeeze(1) 
         state_action_values = state_action_values.reshape([BATCH_SIZE, -1])
-        regular_term = 1e-6 * (state_action_values**2).sum()
-        state_action_values = state_action_values.max(dim=1)[0]
+        #print(action_batch[0])
+        action_batch = action_batch[:,1:]*8+action_batch[:,:1]
+        #print(action_batch[0])
+        state_action_values = state_action_values.gather(1, action_batch)
+        #selected_values = []
+        #for state, goal in zip(state_action_values, action_batch):
+            #selected_values.append(state[:,goal[1], goal[0]])
+        #state_action_values = torch.stack(selected_values, dim=0)
+
+        #regular_term = 1e-6 * (state_action_values**2).sum()
+        #state_action_values = state_action_values.max(dim=1)[0]
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -259,7 +270,7 @@ class DQNAgent():
         loss = F.smooth_l1_loss(state_action_values,
                                 expected_state_action_values)
 
-        loss += regular_term
+        #loss += regular_term
 
         # Optimize the model
         self.optimizer.zero_grad()
