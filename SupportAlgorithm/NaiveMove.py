@@ -6,7 +6,8 @@ class NaiveMove:
         self.done = False
 
     def moveTo(self, pos, vel, angle, goal):
-        if ((pos[0]-goal[0])**2 + (pos[1]-goal[1])**2) < 0.5:
+        if ((pos[0]-goal[0])**2 + (pos[1]-goal[1])**2) < 0.01:
+            return [0, 0], 0
             self.done = True
         else:
             self.done = False

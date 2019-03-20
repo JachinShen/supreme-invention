@@ -24,7 +24,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
-#agent.load()
+agent.load()
 agent2 = HandAgent()
 episode_durations = []
 

@@ -25,6 +25,18 @@ class HandAgent():
             [7.5, 2.0],
             [7.5, 4.5],
         ]
+        self.connected = [
+            [9, 1],
+            [0, 2, 7],
+            [1, 3],
+            [2, 4],
+            [3, 5],
+            [4, 6],
+            [5, 7],
+            [6, 8],
+            [7, 9],
+            [8, 0],
+        ]
         self.index = 0
         self.target = self.path[self.index]
         self.move = NaiveMove()
@@ -52,9 +64,9 @@ class HandAgent():
                 self.target = self.path[self.index]
 
         v, omega = self.move.moveTo(pos, vel, angle, self.target)
-        action[0] = v[0] / 2
+        action[0] = v[0]
         action[1] = omega
-        action[2] = v[1] / 3
+        action[2] = v[1]
         return action
 
         return new_action

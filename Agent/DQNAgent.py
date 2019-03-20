@@ -27,7 +27,7 @@ BATCH_SIZE = 128
 GAMMA = 0.9
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 200
+EPS_DECAY = 1000
 
 Transition = namedtuple(
     'Transition', ('state', 'action', 'next_state', 'reward'))
@@ -69,45 +69,46 @@ class DQNAgent():
         self.memory = ReplayMemory(10000)
 
         self.steps_done = 0
-        self.target = (-10, -10)
+        #self.target = (-10, -10)
         #self.move = GlobalLocalPlanner()
-        self.move = NaiveMove()
-        self.width = 40
-        self.height = 25
-        icra_map = Map(self.width, self.height)
+        #self.move = NaiveMove()
+        self.scale = 10
+        self.map_width = int(8*self.scale)
+        self.map_height = int(5*self.scale)
+        icra_map = Map(self.map_width, self.map_height)
         grid = icra_map.getGrid()
-        #grid = cv2.resize(grid, (17, 17), interpolation=cv2.INTER_AREA)
         #grid = 1 - grid
-        self.grid = torch.from_numpy(grid).to(device)
-        self.grid_final = torch.from_numpy(grid*-1e10).to(device)
+        self.whole_map = torch.from_numpy(1-grid).to(device)
+        self.obs_map = torch.from_numpy(grid*-1e10).to(device)
 
     def perprocess_state(self, state):
         device = self.device
         p = state[:2]
         e_p = state[-2:]
-        width, height = 0.8, 0.5
-        left, bottom = p[0]-width, p[1]-height
-        left, bottom = int(left*5), int(bottom*5)
-        right = left + 8
-        top = bottom + 5
+        view_width, view_height = 0.8, 0.5 # m
+        grid_width, grid_height = int(self.map_width*(view_width*2/8)), int(self.map_height*(view_height*2/5))
+        left, bottom = p[0]-view_width, p[1]-view_height
+        left, bottom = int(left*self.scale), int(bottom*self.scale)
+        right = left + grid_width
+        top = bottom + grid_height
         if left < 0:
-            right = 8
+            right = grid_width
             left = 0
-        if right > 40:
-            left = 32
-            right = 40
+        if right > self.map_width:
+            left = self.map_width - grid_width
+            right = self.map_width
         if bottom < 0:
-            top = 8
+            top = grid_height
             bottom = 0
-        if top > 25:
-            bottom = 20
-            top = 25
+        if top > self.map_height:
+            bottom = self.map_height - grid_height
+            top = self.map_height
         self.window = (left, right, bottom, top)
-        window_map = (self.grid[bottom:top, left:right])
+        window_map = (self.whole_map[bottom:top, left:right])
         enemy_map = (torch.zeros((top-bottom), (right-left)).to(device).double())
         if e_p[0] > 0:
-            delta_pos = (np.array(e_p) - np.array(p))*5
-            delta_pos = np.clip(delta_pos, [0, 0], [7, 4]).astype("int")
+            delta_pos = (np.array(e_p) - np.array(p))*self.scale
+            delta_pos = np.clip(delta_pos, [0, 0], [grid_width-1, grid_height-1]).astype("int")
             enemy_map[delta_pos[1], delta_pos[0]] = 1
         window_map = window_map.unsqueeze(0)
         enemy_map = enemy_map.unsqueeze(0)
@@ -148,14 +149,13 @@ class DQNAgent():
         '''
         if is_test or sample > eps_threshold:
             with torch.no_grad():
-
                 value_map = self.policy_net(state_obs)[0][0]
-                value_map += self.grid_final[bottom:top, left:right]
+                value_map += self.obs_map[bottom:top, left:right]
 
                 if is_test:
                     plt.cla()
-                    plt.xlim(0,7)
-                    plt.ylim(0,4)
+                    plt.xlim(0,15)
+                    plt.ylim(0,9)
                     #plt.imshow(self.grid_final[bottom:top, left:right])
                     plt.imshow(np.log(value_map.numpy()+10), cmap="coolwarm")
                     plt.pause(0.00001)
@@ -166,12 +166,12 @@ class DQNAgent():
                 self.local_goal = [x, y]
                 x += left
                 y += bottom
-                x = x/40.0*8.0
-                y = y/25.0*5.0
+                x = x/self.map_width*8.0
+                y = y/self.map_height*5.0
 
         else:
-            value_map = torch.randn(25, 40).double().to(device) + 10
-            value_map += self.grid_final
+            value_map = torch.randn(self.map_height, self.map_width).double().to(device) + 10
+            value_map += self.obs_map
             col_max, col_max_indice = value_map[bottom:top,left:right].max(dim=0)
             max_col_max, max_col_max_indice = col_max.max(dim=0)
             x = max_col_max_indice.item()
@@ -179,8 +179,8 @@ class DQNAgent():
             self.local_goal = [x, y]
             x += left
             y += bottom
-            x = x/40.0*8.0
-            y = y/25.0*5.0
+            x = x/self.map_width*8.0
+            y = y/self.map_height*5.0
             # plt.imshow(value_map.numpy())
             # plt.show()
             #col_max, col_max_indice = value_map.max(0)
@@ -238,12 +238,10 @@ class DQNAgent():
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
         state_batch = Variable(state_batch, requires_grad=True)
-        state_action_values = self.policy_net(state_batch) # batch, 1, 5, 8
-        #state_action_values = state_action_values.sequeeze(1) 
+        state_action_values = self.policy_net(state_batch) # batch, 1, 10, 16
+        regular_term = 1e-1*state_action_values[:,:,2:8, 7:11].mean()
+        action_batch = action_batch[:,1:]*state_action_values.size(3)+action_batch[:,:1]
         state_action_values = state_action_values.reshape([BATCH_SIZE, -1])
-        #print(action_batch[0])
-        action_batch = action_batch[:,1:]*8+action_batch[:,:1]
-        #print(action_batch[0])
         state_action_values = state_action_values.gather(1, action_batch)
         #selected_values = []
         #for state, goal in zip(state_action_values, action_batch):
@@ -270,7 +268,7 @@ class DQNAgent():
         loss = F.smooth_l1_loss(state_action_values,
                                 expected_state_action_values)
 
-        #loss += regular_term
+        loss += regular_term
 
         # Optimize the model
         self.optimizer.zero_grad()
