@@ -35,6 +35,7 @@ for i_episode in range(num_episodes):
     env.reset()
     agent2.reset()
     state, reward, done, info = env.step(action)
+    state_obs = agent.perprocess_state(state)
     for t in range(7*60*30):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
@@ -47,12 +48,20 @@ for i_episode in range(num_episodes):
         else:
             action[4] = 0.0
         '''
-        action = agent.select_action(state, True)
+        #action = agent.select_action(state, True)
+        action = agent.select_action(state, state_obs, True)
+        if state[-1] > 0 and state[-3] > 0:
+            action[4] = +1.0
+        else:
+            action[4] = 0.0
+
 
         next_state, reward, done, info = env.step(action)
+        next_state_obs = agent.perprocess_state(next_state)
 
         # Move to the next state
         state = next_state
+        state_obs = next_state_obs
         env.render()
 
         if done:
