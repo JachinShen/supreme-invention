@@ -29,6 +29,7 @@ class Bullet:
                     density=1e-6)
             ]
         )
+        bullet.bullet=True
         bullet.color = (0.0, 0.0, 0.0)
         bullet.userData = "bullet_{}".format(self.ctr)
         self.ctr += 1

@@ -89,11 +89,22 @@ class ICRAField(gym.Env, EzPickle):
 
         self.robots = {}
 
+        avaiable_pos = [
+            [0.5, 0.5], [0.5, 1.5], [0.5, 2.5], [0.5, 3.5],
+            [1.5, 0.5], [1.5, 4.5], [1.5, 3.5],
+            [2.5, 0.5], [2.5, 1.5], [2.5, 2.5], [2.5, 3.5],
+            [4.0, 1.5], [4.0, 3.5],
+            [5.5, 0.5], [5.5, 1.5], [5.5, 2.5], [5.5, 3.5],
+            [6.5, 0.5], [6.5, 1.5], [6.5, 4.5],
+            [7.5, 0.5], [7.5, 1.5], [7.5, 2.5], [7.5, 3.5]
+        ]
+        init_pos = random.choice(avaiable_pos)
+
         self.robots['robot_0'] = Robot(
-            self.world, np.pi/2, 0.5, 0.5,
+            self.world, np.pi/2, init_pos[0], init_pos[1],
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, -np.pi, 6.5, 4.5,
+            self.world, -np.pi, 7.5, 4.5,
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
@@ -223,14 +234,14 @@ class ICRAField(gym.Env, EzPickle):
         if self.actions["robot_0"] is not None:
             self.reward = self.robots["robot_0"].health - \
                 self.robots["robot_1"].health
-            self.reward -= 1 * self.t * FPS
+            self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward -= 1000
+                #step_reward -= 1000
             if self.robots["robot_1"].health <= 0:
                 done = True
-                step_reward += 1000
+                #step_reward += 1000
             self.prev_reward = self.reward
 
         return self.getStateArray("robot_0"), step_reward, done, {}

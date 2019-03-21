@@ -13,6 +13,24 @@ from util.Grid import Map
 
 class HandAgent():
     def __init__(self):
+        self.avaiable_pos = [
+            [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5], # 0 1 2 3 
+            [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
+            [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5], # 7 8 9 10
+            [4.0, 1.75], [4.0, 3.25],                         # 11 12
+            [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5], # 13 14 15 16
+            [6.5, 0.5], [6.5, 2.0], [6.5, 4.5],             # 17 18 19
+            [7.5, 0.5], [7.5, 2.0], [7.5, 3.0], [7.5, 4.5]  # 20 21 22 23
+        ]
+        self.connected = [
+            [1,2,3,4], [0,2,3], [0,1,3,5], [0,1,2,6],
+            [0,7], [2,9], [3,10],
+            [8,9,10,4], [7,9,10,11], [7,8,10,5,12], [7,8,9],
+            [8,14], [9, 15],
+            [14,15,16,17], [13,15,16,18,11,11,11,11,11], [13,14,16,12,12,12,12,12], [13,14,15,19],
+            [13,20], [14,21], [16, 23],
+            [21,22,23,17], [20,22,23,18], [20,21,23], [20,21,22,19]
+        ]
         self.path = [
             [5.0, 4.5],
             [5.0, 3.0],
@@ -25,25 +43,19 @@ class HandAgent():
             [7.5, 2.0],
             [7.5, 4.5],
         ]
-        self.connected = [
-            [9, 1],
-            [0, 2, 7],
-            [1, 3],
-            [2, 4],
-            [3, 5],
-            [4, 6],
-            [5, 7],
-            [6, 8],
-            [7, 9],
-            [8, 0],
-        ]
-        self.index = 0
-        self.target = self.path[self.index]
+        self.index = len(self.avaiable_pos)-1
+        #self.target = self.path[self.index]
+        self.index = random.choice(self.connected[self.index])
+        self.target = self.avaiable_pos[self.index]
         self.move = NaiveMove()
 
     def reset(self):
-        self.index = 0
-        self.target = self.path[self.index]
+        #self.index = 0
+        #self.target = self.path[self.index]
+        self.index = len(self.avaiable_pos)-1
+        #self.target = self.path[self.index]
+        self.index = random.choice(self.connected[self.index])
+        self.target = self.avaiable_pos[self.index]
         pass
 
     def select_action(self, state):
@@ -53,15 +65,18 @@ class HandAgent():
         angle = state[4]
         if state[-1] > 0 and state[-3] > 0:
             pass
-            action[4] = +1.0
+            #action[4] = +1.0
             #return action
             #self.target = (state[-4], state[-3])
             #self.move = MoveAction(self.target, pos, vel, angle)
         else:
             action[4] = 0.0
-            if ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 0.1):
-                self.index = (self.index + 1) % len(self.path)
-                self.target = self.path[self.index]
+        if ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 0.1):
+            self.index = random.choice(self.connected[self.index])
+            self.target = self.avaiable_pos[self.index]
+            print(self.target)
+            #self.index = (self.index + 1) % len(self.path)
+            #self.target = self.path[self.index]
 
         v, omega = self.move.moveTo(pos, vel, angle, self.target)
         action[0] = v[0]

@@ -18,15 +18,24 @@ class DQN(nn.Module):
             #nn.LeakyReLU(),
         #)
         self.conv = nn.Sequential(
-            nn.Conv2d(2, 8, 2), # 5x8 -> 4x7
+            nn.Conv2d(2, 8, 3), # 5x8 -> 4x7
+            nn.BatchNorm2d(8),
             nn.LeakyReLU(),
-            nn.Conv2d(8, 16, 2), # 3x6
+            nn.Conv2d(8, 16, 3), # 3x6
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.Conv2d(16, 32, 3), # 3x6
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 3), # 3x6
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(16, 1, kernel_size=(3, 3)),  # 3x6 -> 5x8
-            #nn.LeakyReLU(),
-            #nn.ConvTranspose2d(8, 4, kernel_size=(5, 9)),  # 5x8 -> 9x16
+            nn.ConvTranspose2d(64, 16, kernel_size=(5, 5)),  # 3x6 -> 5x8
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=(5, 5)),  # 5x8 -> 9x16
             #nn.LeakyReLU(),
             #nn.ConvTranspose2d(4, 2, kernel_size=(5, 7)),  # 13x22
             #nn.LeakyReLU(),

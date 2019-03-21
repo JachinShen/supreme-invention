@@ -24,7 +24,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = DQNAgent()
-agent.load()
+#agent.load()
 agent2 = HandAgent()
 episode_durations = []
 
@@ -54,6 +54,7 @@ for i_episode in range(num_episodes):
         action[2] = v[1]
         if state[-1] > 0 and state[-3] > 0:
             action[4] = +1.0
+            reward += 10
         else:
             action[4] = 0.0
 
@@ -71,7 +72,7 @@ for i_episode in range(num_episodes):
         if done:
             break
     print("Simulation end in: {}:{:02d}, reward: {}".format(
-        t//(60*30), t % (60*30)//30, reward))
+        t//(60*30), t % (60*30)//30, env.reward))
     episode_durations.append(t + 1)
     agent2.reset()
 
