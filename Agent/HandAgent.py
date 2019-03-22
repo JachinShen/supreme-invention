@@ -49,11 +49,9 @@ class HandAgent():
         self.target = self.avaiable_pos[self.index]
         self.move = NaiveMove()
 
-    def reset(self):
-        #self.index = 0
-        #self.target = self.path[self.index]
-        self.index = len(self.avaiable_pos)-1
-        #self.target = self.path[self.index]
+    def reset(self, pos):
+        #self.index = len(self.avaiable_pos)-1
+        self.index = self.avaiable_pos.index(pos)
         self.index = random.choice(self.connected[self.index])
         self.target = self.avaiable_pos[self.index]
         pass

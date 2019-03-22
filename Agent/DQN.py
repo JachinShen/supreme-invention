@@ -13,35 +13,58 @@ class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         #self.fc = nn.Sequential(
-            #nn.ReLU(),
-            #nn.Linear(10, 40),
+            #nn.Linear(16*3*6, 64),
+            #nn.BatchNorm2d(64),
             #nn.LeakyReLU(),
+            #nn.Linear(64, 16*3*6),
         #)
-        self.conv = nn.Sequential(
-            nn.Conv2d(2, 8, 3), # 5x8 -> 4x7
-            nn.BatchNorm2d(8),
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 8, 3), # 5x8 -> 4x7
+            nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(8),
             nn.LeakyReLU(),
             nn.Conv2d(8, 16, 3), # 3x6
-            nn.BatchNorm2d(16),
+            nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
-            nn.Conv2d(16, 32, 3), # 3x6
-            nn.BatchNorm2d(32),
+            #nn.Conv2d(16, 32, 3), # 3x6
+            #nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(32),
+            #nn.LeakyReLU(),
+            #nn.Conv2d(32, 64, 3), # 3x6
+            #nn.BatchNorm2d(64),
+            #nn.LeakyReLU(),
+            #nn.Conv2d(64, 128, 3), # 3x6
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(1, 8, 3), # 5x8 -> 4x7
+            nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(8),
             nn.LeakyReLU(),
-            nn.Conv2d(32, 64, 3), # 3x6
-            nn.BatchNorm2d(64),
+            nn.Conv2d(8, 16, 3), # 3x6
+            nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
+            #nn.Conv2d(16, 32, 3), # 3x6
+            #nn.MaxPool2d(2, 2),
+            #nn.BatchNorm2d(32),
+            #nn.LeakyReLU(),
+            #nn.Conv2d(32, 64, 3), # 3x6
+            #nn.BatchNorm2d(64),
+            #nn.LeakyReLU(),
+            #nn.Conv2d(64, 128, 3), # 3x6
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(64, 16, kernel_size=(5, 5)),  # 3x6 -> 5x8
-            nn.BatchNorm2d(16),
+            nn.ConvTranspose2d(16, 8, kernel_size=(7, 8)),  # 3x6 -> 5x8
+            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 1, kernel_size=(5, 5)),  # 5x8 -> 9x16
+            nn.ConvTranspose2d(8, 4, kernel_size=(5, 8)),  # 5x8 -> 9x16
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(4, 2, kernel_size=(5, 7)),  # 13x22
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(2, 1, kernel_size=(4, 7)),  # 17x28
             #nn.LeakyReLU(),
-            #nn.ConvTranspose2d(4, 2, kernel_size=(5, 7)),  # 13x22
-            #nn.LeakyReLU(),
-            #nn.ConvTranspose2d(2, 1, kernel_size=(5, 7)),  # 17x28
-            #nn.LeakyReLU(),
-            #nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 21x34
+            #nn.ConvTranspose2d(4, 1, kernel_size=(4, 7)),  # 21x34
             #nn.LeakyReLU(),
             #nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 25x40
         )
@@ -55,8 +78,19 @@ class DQN(nn.Module):
         '''
 
     def forward(self, s):
-        feature_map = self.conv(s)
+        #print(s.shape)
+        window_map = s[:,:1,:,:]
+        enemy_map = s[:,1:,:,:]
+        feature_map_1 = self.conv1(window_map)
+        feature_map_2 = self.conv2(enemy_map)
+        #feature_map = torch.cat([feature_map_1, feature_map_2], dim=1)
+        feature_map = feature_map_1*1e-8 +  feature_map_2
+        #batch, channel, w, h = feature_map.shape
+        #feature_map = feature_map.reshape([batch, -1])
+        #feature_map = self.fc(feature_map)
+        #feature_map = feature_map.reshape([batch, channel, w, h])
         value_map = self.dconv(feature_map)
+        #print(value_map.shape)
         #value_map = value_map + s[:,0:1,:,:]
 
         #batch_size = s.size(0)

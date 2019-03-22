@@ -35,8 +35,8 @@ for i_episode in range(num_episodes):
     print("Epoch: {}".format(i_episode))
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    env.reset()
-    agent2.reset()
+    pos = env.reset()
+    agent2.reset(pos)
     state, reward, done, info = env.step(action)
     state_obs = agent.perprocess_state(state)
     for t in range(7*60*30):
@@ -77,7 +77,7 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
-            agent2.reset()
+            #agent2.reset()
             break
 
 env.close()
