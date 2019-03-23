@@ -12,57 +12,52 @@ from util.Grid import Map
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
-        #self.fc = nn.Sequential(
-            #nn.Linear(16*3*6, 64),
+        '''
+        self.fc = nn.Sequential(
+            nn.Linear(16*3*6, 64),
             #nn.BatchNorm2d(64),
-            #nn.LeakyReLU(),
-            #nn.Linear(64, 16*3*6),
-        #)
+            nn.LeakyReLU(),
+            nn.Linear(64, 16*3*6),
+        )
+        '''
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 8, 3), # 5x8 -> 4x7
-            nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(8),
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
             nn.LeakyReLU(),
-            nn.Conv2d(8, 16, 3), # 3x6
-            nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(16),
+            nn.Conv2d(4, 16, 2), # 3x6
             nn.LeakyReLU(),
-            #nn.Conv2d(16, 32, 3), # 3x6
-            #nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(32),
-            #nn.LeakyReLU(),
-            #nn.Conv2d(32, 64, 3), # 3x6
-            #nn.BatchNorm2d(64),
-            #nn.LeakyReLU(),
-            #nn.Conv2d(64, 128, 3), # 3x6
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
         )
         self.conv2 = nn.Sequential(
-            nn.Conv2d(1, 8, 3), # 5x8 -> 4x7
-            nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(8),
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
             nn.LeakyReLU(),
-            nn.Conv2d(8, 16, 3), # 3x6
-            nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(16),
+            nn.Conv2d(4, 16, 2), # 3x6
             nn.LeakyReLU(),
-            #nn.Conv2d(16, 32, 3), # 3x6
-            #nn.MaxPool2d(2, 2),
-            #nn.BatchNorm2d(32),
-            #nn.LeakyReLU(),
-            #nn.Conv2d(32, 64, 3), # 3x6
-            #nn.BatchNorm2d(64),
-            #nn.LeakyReLU(),
-            #nn.Conv2d(64, 128, 3), # 3x6
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
+            nn.LeakyReLU(),
+            nn.Conv2d(4, 16, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(16, 8, kernel_size=(7, 8)),  # 3x6 -> 5x8
-            #nn.BatchNorm2d(16),
+            nn.ConvTranspose2d(64, 32, kernel_size=(3, 3)),  # 3x6 -> 5x8
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(8, 4, kernel_size=(5, 8)),  # 5x8 -> 9x16
+            nn.ConvTranspose2d(32, 16, kernel_size=(3, 3)),  # 5x8 -> 9x16
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(4, 2, kernel_size=(5, 7)),  # 13x22
+            nn.ConvTranspose2d(16, 1, kernel_size=(1, 1)),  # 13x22
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(2, 1, kernel_size=(4, 7)),  # 17x28
+            #nn.ConvTranspose2d(2, 1, kernel_size=(4, 7)),  # 17x28
             #nn.LeakyReLU(),
             #nn.ConvTranspose2d(4, 1, kernel_size=(4, 7)),  # 21x34
             #nn.LeakyReLU(),
@@ -78,18 +73,27 @@ class DQN(nn.Module):
         '''
 
     def forward(self, s):
-        #print(s.shape)
-        window_map = s[:,:1,:,:]
-        enemy_map = s[:,1:,:,:]
+        window_map = s[:,0:1,:,:]
+        enemy_map = s[:,1:2,:,:]
+        last_value_map = s[:,2:3,:,:]
         feature_map_1 = self.conv1(window_map)
         feature_map_2 = self.conv2(enemy_map)
-        #feature_map = torch.cat([feature_map_1, feature_map_2], dim=1)
-        feature_map = feature_map_1*1e-8 +  feature_map_2
+        feature_map_3 = self.conv3(last_value_map)
+        #feature_map = feature_map_1*1e-8 +  feature_map_2 + feature_map_3*1e-8
+        #feature_map = feature_map_1*(feature_map_2+feature_map_3)
+        feature_map = feature_map_1 + feature_map_2 + feature_map_3
+
         #batch, channel, w, h = feature_map.shape
         #feature_map = feature_map.reshape([batch, -1])
         #feature_map = self.fc(feature_map)
         #feature_map = feature_map.reshape([batch, channel, w, h])
+
         value_map = self.dconv(feature_map)
+        batch, channel, w, h = value_map.shape
+        value_map = value_map.reshape([batch, -1])
+        value_map = F.softmax(value_map, dim=1)
+        value_map = value_map.reshape([batch, channel, w, h])
+
         #print(value_map.shape)
         #value_map = value_map + s[:,0:1,:,:]
 

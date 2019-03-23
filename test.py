@@ -66,7 +66,6 @@ for i_episode in range(num_episodes):
         else:
             action[4] = 0.0
 
-
         next_state, reward, done, info = env.step(action)
         next_state_obs = agent.perprocess_state(next_state)
 

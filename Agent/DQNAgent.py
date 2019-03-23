@@ -3,6 +3,7 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import math
 import random
+import time
 from collections import namedtuple
 from itertools import count
 
@@ -26,10 +27,10 @@ from util.Grid import Map
 MARGIN = 50
 BATCH_SIZE = 512
 #GAMMA = 0.999
-GAMMA = 0.5
+GAMMA = 0.1
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 100
+EPS_DECAY = 50
 
 Transition = namedtuple(
     'Transition', ('state', 'action', 'next_state', 'reward'))
@@ -68,7 +69,7 @@ class DQNAgent():
         self.target_net.eval()
 
         self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=1e-3)
-        self.memory = ReplayMemory(10000)
+        self.memory = ReplayMemory(100000)
 
         self.steps_done = 0
         #self.target = (-10, -10)
@@ -80,8 +81,9 @@ class DQNAgent():
         self.map_height = int(5*self.scale)
         icra_map = Map(self.map_width, self.map_height)
         grid = icra_map.getGrid()
-        self.whole_map = torch.from_numpy(1-grid).to(device)
-        self.obs_map = torch.from_numpy(grid*-1e10).to(device)
+        self.obs_map = torch.from_numpy(1-grid).to(device)
+
+        self.whole_map = torch.from_numpy(np.load("ob.npy")).to(device)
 
         self.view_width, self.view_height = 0.8, 0.5 # m
         self.grid_width, self.grid_height = int(self.map_width*(self.view_width*2/8)), int(self.map_height*(self.view_height*2/5))
@@ -94,6 +96,7 @@ class DQNAgent():
         self.gaussian = gaussian.unsqueeze(0).unsqueeze(0).repeat(BATCH_SIZE,1,1,1)
         self.whole_rand = torch.rand(self.grid_height, self.grid_width).double().to(device)
         self.predicted_value = None
+        self.value_map = torch.zeros(1, 1, self.grid_height, self.grid_width).double().to(device)
         #plt.imshow(self.whole_map)
         #plt.show()
 
@@ -126,22 +129,30 @@ class DQNAgent():
         enemy_map = (torch.zeros((self.grid_height), (self.grid_width)).to(device).double())
         if e_p[0] > 0:
             ENEMY_SIZE = 2
-            delta_pos = (np.array(e_p) - np.array(p))*self.scale
-            delta_pos = np.array([delta_pos[0]+self.grid_width/2, delta_pos[1]+self.grid_height/2])
-            delta_pos = np.clip(delta_pos,
-                [ENEMY_SIZE, ENEMY_SIZE],
-                [self.grid_width-ENEMY_SIZE-1, self.grid_height-ENEMY_SIZE-1]).astype("int")
-            enemy_map[delta_pos[1]-ENEMY_SIZE:delta_pos[1]+ENEMY_SIZE,
-                      delta_pos[0]-ENEMY_SIZE:delta_pos[0]+ENEMY_SIZE] = 1
-        window_map = window_map.unsqueeze(0)
-        enemy_map = enemy_map.unsqueeze(0)
-        state = torch.cat([window_map, enemy_map], dim=0).unsqueeze(0) # 1, 2, 5, 8
+            delta_pos = (np.array(e_p) - np.array(p))
+            x, y = np.mgrid[-0.5:0.5:1/self.scale,
+                            -0.8:0.8:1/self.scale]
+            pos = np.empty(x.shape + (2,))
+            pos[:, :, 0] = x; pos[:, :, 1] = y
+            rv = multivariate_normal(delta_pos[::-1], [[1, 0.0], [0.0, 1]])
+            enemy_map = torch.from_numpy(rv.pdf(pos)).to(device).double()
+            #delta_pos = (np.array(e_p) - np.array(p))*self.scale
+            #delta_pos = np.array([delta_pos[0]+self.grid_width/2, delta_pos[1]+self.grid_height/2])
+            #delta_pos = np.clip(delta_pos,
+                #[ENEMY_SIZE, ENEMY_SIZE],
+                #[self.grid_width-ENEMY_SIZE-1, self.grid_height-ENEMY_SIZE-1]).astype("int")
+            #enemy_map[delta_pos[1]-ENEMY_SIZE:delta_pos[1]+ENEMY_SIZE,
+                      #delta_pos[0]-ENEMY_SIZE:delta_pos[0]+ENEMY_SIZE] = 1
         if False:
             plt.cla()
             plt.xlim(0,self.grid_width-1)
             plt.ylim(0,self.grid_height-1)
-            plt.imshow(window_map.numpy()[0], cmap="coolwarm", vmin=0, )
+            plt.imshow(window_map, cmap="coolwarm")
             plt.pause(0.00001)
+        window_map = window_map.unsqueeze(0).unsqueeze(1)
+        enemy_map = enemy_map.unsqueeze(0).unsqueeze(1)
+        #state = torch.cat([window_map, enemy_map, self.value_map], dim=1) # 1, 3, h, w
+        state = torch.cat([window_map, enemy_map, self.value_map], dim=1) # 1, 3, h, w
         return state
 
     def select_action(self, state, state_obs, is_test=False):
@@ -157,36 +168,48 @@ class DQNAgent():
             math.exp(-1. * self.steps_done / EPS_DECAY)
         left, right, bottom, top = self.window
         self.state_obs = state_obs
-        if is_test or sample > eps_threshold:
-            with torch.no_grad():
-                self.policy_net.eval()
-                value_map = self.policy_net(state_obs)[0][0]
-                if is_test:
-                    if self.predicted_value is None:
-                        self.predicted_value = value_map
-                    self.predicted_value = self.predicted_value * 0.5 + value_map * 0.5
-                    #value_map = self.predicted_value
-                value_map += self.obs_map[bottom:top, left:right]
 
-                if is_test:
-                    plt.cla()
-                    plt.xlim(0,self.grid_width-1)
-                    plt.ylim(0,self.grid_height-1)
-                    #plt.imshow(self.grid_final[bottom:top, left:right])
-                    plt.imshow((value_map.numpy()), cmap="coolwarm", vmin=0, )
-                    #plt.imshow(value_map.numpy(), cmap="coolwarm")
-                    plt.pause(0.00001)
-                col_max, col_max_indice = value_map.max(dim=0)
-                max_col_max, max_col_max_indice = col_max.max(dim=0)
-                x = max_col_max_indice.item()
-                y = col_max_indice[x].item()
-                self.local_goal = [x, y]
-                x += (left-MARGIN)
-                y += (bottom-MARGIN)
-                x = x/self.map_width*8.0
-                y = y/self.map_height*5.0
-                self.global_goal = [x, y]
+        with torch.no_grad():
+            self.policy_net.eval()
+            self.value_map = self.policy_net(state_obs)
+            value_map = self.value_map[0][0]
 
+        #if is_test or sample > eps_threshold:
+        if is_test:
+            #value_map += torch.rand([self.grid_height, self.grid_width]).to(device).double()
+            value_map *= self.obs_map[bottom:top, left:right]
+            value_map /= value_map.sum()
+            h, w = value_map.shape
+            #value_map = value_map.reshape([w*h])
+            #value_map = torch.softmax(value_map, dim=0)
+            #value_map = value_map.cpu().numpy()
+            if is_test:
+                plt.cla()
+                plt.xlim(0,self.grid_width-1)
+                plt.ylim(0,self.grid_height-1)
+                plt.imshow(value_map.cpu().numpy().reshape([h,w]), cmap="coolwarm", vmin=0, )
+                plt.pause(0.00001)
+                plt.cla()
+                plt.xlim(0,self.grid_width-1)
+                plt.ylim(0,self.grid_height-1)
+                plt.imshow(state_obs[0][1].cpu().numpy(), cmap="coolwarm", vmin=0, )
+                plt.pause(0.00001)
+            '''
+            value_map = value_map.reshape([w*h])
+            selected = np.random.choice(range(w*h), p=value_map)
+            y = selected // w
+            x = selected % w
+            '''
+            col_max, col_max_indice = value_map.max(dim=0)
+            max_col_max, max_col_max_indice = col_max.max(dim=0)
+            x = max_col_max_indice.item()
+            y = col_max_indice[x].item()
+            self.local_goal = [x, y]
+            x += (left-MARGIN)
+            y += (bottom-MARGIN)
+            x = x/self.map_width*8.0
+            y = y/self.map_height*5.0
+            self.global_goal = [x, y]
         else:
             self.whole_rand = self.whole_rand*0.8 + torch.rand(top-bottom, right-left).double().to(device)*0.2
             value_map = self.whole_rand
@@ -263,7 +286,8 @@ class DQNAgent():
         state_action_values = self.policy_net(state_batch) # batch, 1, 10, 16
         #regular_term = 1e-1*state_action_values[:,:,2:8, 7:11].mean()
         #regular_term = 1e-8 * (state_action_values*self.gaussian).sum()
-        regular_term = 1e-6 * state_action_values.abs().sum()
+        #regular_term = 1e-6 * state_action_values.abs().sum()
+        regular_term = 1e-6 * (state_action_values**2).sum()
         action_batch = action_batch[:,1:]*state_action_values.size(3)+action_batch[:,:1]
         state_action_values = state_action_values.reshape([BATCH_SIZE, -1])
         state_action_values = state_action_values.gather(1, action_batch)
@@ -285,16 +309,18 @@ class DQNAgent():
             next_state_values * GAMMA) + reward_batch
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_values,
-                                expected_state_action_values)
+        #loss = F.smooth_l1_loss(state_action_values,
+                                #expected_state_action_values)
+        loss = torch.mean(-torch.log(state_action_values)*expected_state_action_values)
 
-        loss += regular_term
+        #loss += regular_term
 
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy_net.parameters():
-            param.grad.data.clamp_(-1, 1)
+            if param.grad is not None:
+                param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
     def update_target_net(self):
@@ -302,8 +328,13 @@ class DQNAgent():
 
     def save(self):
         torch.save(self.policy_net.state_dict(), "ICRA.model")
+        time.sleep(1)
+        torch.save(self.memory, "replay.memory")
 
     def load(self):
         self.policy_net.load_state_dict(torch.load(
             "ICRA.model", map_location=self.device))
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def load_memory(self):
+        self.memory = torch.load("replay.memory")
