@@ -89,11 +89,45 @@ class ICRAField(gym.Env, EzPickle):
 
         self.robots = {}
 
+        '''
+        avaiable_pos = [
+            [0.5, 0.5], [0.5, 1.5], [0.5, 2.5], [0.5, 3.5],
+            [1.5, 0.5], [1.5, 4.5], [1.5, 3.5],
+            [2.5, 0.5], [2.5, 1.5], [2.5, 2.5], [2.5, 3.5],
+            [4.0, 1.5], [4.0, 3.5],
+            [5.5, 0.5], [5.5, 1.5], [5.5, 2.5], [5.5, 3.5],
+            [6.5, 0.5], [6.5, 1.5], [6.5, 4.5],
+            [7.5, 0.5], [7.5, 1.5], [7.5, 2.5], [7.5, 3.5]
+        ]
+        '''
+        avaiable_pos = [
+            [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5], # 0 1 2 3 
+            [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
+            [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5], # 7 8 9 10
+            [4.0, 1.75], [4.0, 3.25],                         # 11 12
+            [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5], # 13 14 15 16
+            [6.5, 0.5], [6.5, 2.0], [6.5, 4.5],             # 17 18 19
+            [7.5, 0.5], [7.5, 2.0], [7.5, 3.0], [7.5, 4.5]  # 20 21 22 23
+        ]
+        connected = [
+            [1,2,3,4], [0,2,3], [0,1,3,5], [0,1,2,6],
+            [0,7], [2,9], [3,10],
+            [8,9,10,4], [7,9,10,11], [7,8,10,5,12], [7,8,9],
+            [8,14], [9, 15],
+            [14,15,16,17], [13,15,16,18,11,11,11,11,11], [13,14,16,12,12,12,12,12], [13,14,15,19],
+            [13,20], [14,21], [16, 23],
+            [21,22,23,17], [20,22,23,18], [20,21,23], [20,21,22,19]
+        ]
+        random_index = random.randint(0,23)
+        #random_index = 5
+        init_pos_0 = avaiable_pos[random_index]
+        init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
+
         self.robots['robot_0'] = Robot(
-            self.world, np.pi/2, 0.5, 0.5,
+            self.world, np.pi/2, init_pos_0[0], init_pos_0[1],
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, np.pi / 2, 6.5, 0.5,
+            self.world, -np.pi, init_pos_1[0], init_pos_1[1],
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
@@ -112,7 +146,8 @@ class ICRAField(gym.Env, EzPickle):
         self.actions["robot_0"] = None
         self.actions["robot_1"] = None
 
-        return self.step(None)[0]
+        return init_pos_1
+        #return self.step(None)[0]
 
     def getStateArray(self, robot_id):
         robot_state = self.state_dict[robot_id]
@@ -154,7 +189,7 @@ class ICRAField(gym.Env, EzPickle):
         if action[5] > 0.99:
             self.robots[robot_name].addBullets()
             action[5] = +0.0
-        if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+        if action[4] > 0.99 and int(self.t*FPS) % (FPS/10) == 1:
             if(self.robots[robot_name].bullets_num > 0):
                 init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
@@ -221,16 +256,20 @@ class ICRAField(gym.Env, EzPickle):
         done = False
         # First step without action, called from reset()
         if self.actions["robot_0"] is not None:
-            self.reward = self.robots["robot_0"].health - \
-                self.robots["robot_1"].health
-            self.reward -= 0.1 * self.t * FPS
+            pos = self.state_dict["robot_0"]["pos"]
+            e_pos = self.state_dict["robot_1"]["pos"]
+            distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
+            self.reward = 10/distance
+            #self.reward = self.robots["robot_0"].health - \
+                #self.robots["robot_1"].health
+            #self.reward -= 0.1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
-                step_reward -= 10000
+                #step_reward -= 1000
             if self.robots["robot_1"].health <= 0:
                 done = True
-                step_reward += 10000
+                #step_reward += 1000
             self.prev_reward = self.reward
 
         return self.getStateArray("robot_0"), step_reward, done, {}

@@ -2,117 +2,120 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
+import sys
+from torch.autograd import Variable
+sys.path.append(".")
+from util.Grid import Map
 
 from Referee.ICRAMap import ICRAMap
 
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
-        # self.fc = nn.Sequential(
-        #     nn.ReLU(),
-        #     nn.Linear(9, 25),
-        #     nn.LeakyReLU(),
-        # )
-        #
-        # self.dconv = nn.Sequential(
-        #     nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 5x5 -> 7x7
-        #     nn.LeakyReLU(),
-        #     nn.ConvTranspose2d(1, 1, kernel_size=(3,3)), # 7x7 -> 9x9
-        # )
-
-        self.cnn = nn.Sequential(
-            nn.Conv2d(1, 4, kernel_size=(3, 3), stride=2, padding=1), #50*80 -> 25*40*4
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(3, 3), padding=1), #25*40*4 -> 9*14*4
-            nn.Conv2d(4, 10, kernel_size=(2, 2), stride=2, padding=0), #9*14*4 -> 4*7*10
-            nn.ReLU()
-        )
-
-        self.fc1 = nn.Sequential(
-            nn.Linear(280, 25),
-            nn.LeakyReLU()
-        )
-
-        self.fc2 = nn.Sequential(
-            nn.Linear(35, 16),
-            nn.ReLU()
-        )
-
-        self.fc3 = nn.Sequential(
-            nn.Linear(16, 8),
-            nn.ReLU()
-        )
-
-        self.sigmoid_sj = nn.Sequential(
-            nn.Linear(24, 3),
-            nn.Sigmoid()
-        )
-
-        self.fc4_tu = nn.Sequential(
-            nn.Linear(24, 25),
-            nn.ReLU()
-        )
-
-        self.dconv_tu = nn.Sequential(
-            nn.ConvTranspose2d(1, 1, kernel_size=(3, 3)),  # 5x5 -> 7x7
+        '''
+        self.fc = nn.Sequential(
+            nn.Linear(16*3*6, 64),
+            #nn.BatchNorm2d(64),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(1, 3, kernel_size=(3, 3)),  # 7x7 -> 9x9
+            nn.Linear(64, 16*3*6),
         )
+        '''
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
+            nn.LeakyReLU(),
+            nn.Conv2d(4, 16, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
+            nn.LeakyReLU(),
+            nn.Conv2d(4, 16, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(1, 4, 2), # 5x8 -> 4x7
+            nn.LeakyReLU(),
+            nn.Conv2d(4, 16, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(16, 32, 2), # 3x6
+            nn.LeakyReLU(),
+            nn.Conv2d(32, 64, 2), # 3x6
+            nn.LeakyReLU(),
+        )
+        self.dconv = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, kernel_size=(3, 3)),  # 3x6 -> 5x8
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=(3, 3)),  # 5x8 -> 9x16
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=(1, 1)),  # 13x22
+            nn.LeakyReLU(),
+            #nn.ConvTranspose2d(2, 1, kernel_size=(4, 7)),  # 17x28
+            #nn.LeakyReLU(),
+            #nn.ConvTranspose2d(4, 1, kernel_size=(4, 7)),  # 21x34
+            #nn.LeakyReLU(),
+            #nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 25x40
+        )
+        '''
+        icra_map = Map(40, 25)
+        grid = icra_map.getGrid()
+        grid = 1 - grid
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.grid = torch.from_numpy(grid).to(device).double()
+        self.device = device
+        '''
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.map = ICRAMap().image.reshape(1, 1, 50, 80)
         self.map = torch.from_numpy(self.map).double().to(device)
 
     def forward(self, s):
-        batch_size = s.size(0)
-        state_num = s.size(1)
-        # print(batch_size)
+        window_map = s[:,0:1,:,:]
+        enemy_map = s[:,1:2,:,:]
+        last_value_map = s[:,2:3,:,:]
+        feature_map_1 = self.conv1(window_map)
+        feature_map_2 = self.conv2(enemy_map)
+        feature_map_3 = self.conv3(last_value_map)
+        #feature_map = feature_map_1*1e-8 +  feature_map_2 + feature_map_3*1e-8
+        #feature_map = feature_map_1*(feature_map_2+feature_map_3)
+        feature_map = feature_map_1 + feature_map_2 + feature_map_3
 
-        state = torch.squeeze(s).view(batch_size, state_num) #b * 10
+        #batch, channel, w, h = feature_map.shape
+        #feature_map = feature_map.reshape([batch, -1])
+        #feature_map = self.fc(feature_map)
+        #feature_map = feature_map.reshape([batch, channel, w, h])
 
-        #SJ
-        x_sj = self.cnn(self.map).view(-1) #280
-        map_feature_sj = self.fc1(x_sj) #25
-        map_feature_sj = map_feature_sj.repeat(batch_size).reshape(batch_size, 25) #b * 25
-        #map_feature_sj = self.fc1(self.cnn(self.map).view(batch_size, -1)) #b * 25
-        x_sj = torch.cat((map_feature_sj, state), 1) # b * 35
-        x_sj = self.fc2(x_sj) # b * 16
-        y_sj = self.fc3(x_sj) # b * 8
-        x_sj = self.sigmoid_sj(torch.cat((x_sj, y_sj), 1)) # b* 3
+        value_map = self.dconv(feature_map)
+        batch, channel, w, h = value_map.shape
+        value_map = value_map.reshape([batch, -1])
+        value_map = F.softmax(value_map, dim=1)
+        value_map = value_map.reshape([batch, channel, w, h])
 
-        #TU
-        x_tu = self.cnn(self.map).view(-1)  # 280
-        map_feature_tu = self.fc1(x_tu)  # 25
-        map_feature_tu = map_feature_tu.repeat(batch_size).reshape(batch_size, 25)  # b * 25
-        # map_feature_tu = self.fc1(self.cnn(self.map).view(batch_size, -1)) #b * 25
-        x_tu = self.fc2(torch.cat((map_feature_tu, state), 1)) # b * 16
-        y_tu = self.fc3(x_tu) #b * 8
-        x_tu = self.fc4_tu(torch.cat((x_tu, y_tu), 1)) # b * 25
-        x_tu = x_tu.reshape(batch_size, 1, 5, 5) # b * 1 * 5 * 5
-        x_tu = self.dconv_tu(x_tu) # b * 3 * 9 * 9
+        #print(value_map.shape)
+        #value_map = value_map + s[:,0:1,:,:]
 
-        #merge
-        value_map = x_tu[:,torch.max(x_sj, 1)[1],:,:]
-
+        #batch_size = s.size(0)
+        #feature = self.conv(m).squeeze(2).squeeze(1)
+        #feature_map = self.fc(torch.cat([feature, s], dim=1))
+        #feature_map = self.fc(s)
+        #feature_map = feature_map.reshape(batch_size, 1, 5, 8)
+        #value_map = self.dconv(feature_map)
         return value_map
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #
-        # feature_map = self.fc(s)
-        # feature_map = feature_map.reshape(batch_size, 1, 5, 5)
-        # value_map = self.dconv(feature_map)
-        # return value_map
+if __name__ == "__main__":
+    net = DQN()
+    inputs = Variable(torch.rand([1,2,5,8]), requires_grad=True)
+    #inputs2 = Variable(torch.rand([1,2,5,8]), requires_grad=True)
+    out = net(inputs)
+    #out = 2*inputs + 3*inputs2
+    sss = out.sum()
+    sss.backward()
+    print(inputs.grad)

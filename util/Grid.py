@@ -47,6 +47,7 @@ class Grid(object):
             if (y + dy, x + dx) in self:
                 yield y + dy, x + dx
 
+MARGIN = 50
 class Map():
     def __init__(self, width, height):
         grid = np.zeros([height, width])
@@ -60,10 +61,10 @@ class Map():
         self.scale_y = scale_y
 
         for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
-            for idx in range(int((x-w-0.3)*scale_x), int((x+w+0.6)*scale_x)):
+            for idx in range(int((x-w-0.3)*scale_x), int((x+w+0.3)*scale_x)):
                 if idx < 0 or idx >= width:
                     continue
-                for idy in range(int((y-h-0.3)*scale_y), int((y+h+0.6)*scale_y)):
+                for idy in range(int((y-h-0.3)*scale_y), int((y+h+0.3)*scale_y)):
                     if idy < 0 or idy >= height:
                         continue
                     index_x.append(idx)
@@ -75,7 +76,9 @@ class Map():
         #index_y = np.clip(index_y, 0, height-1)
 
         grid[index_y, index_x] = 1
-        self.grid = grid
+        expanded_grid = np.ones([height+2*MARGIN, width+2*MARGIN])
+        expanded_grid[MARGIN:-MARGIN, MARGIN:-MARGIN] = grid
+        self.grid = expanded_grid
 
     def getGrid(self):
         return self.grid

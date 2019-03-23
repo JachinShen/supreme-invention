@@ -231,42 +231,9 @@ def plot_arrow(x, y, yaw, length=0.5, width=0.1):  # pragma: no cover
     plt.plot(x, y)
 
 
-def calc_repulsive_potential(x, y, ox, oy, rr):
-    # search nearest obstacle
-    minid = -1
-    dmin = float("inf")
-    for i, _ in enumerate(ox):
-        #d = np.hypot(x - ox[i], y - oy[i])
-        d = math.sqrt((x - ox[i])**2 + (y - oy[i])**2)
-        if dmin >= d:
-            dmin = d
-            minid = i
-
-    # calc repulsive potential
-    #dq = np.hypot(x - ox[minid], y - oy[minid])
-    return np.array([ox[minid], oy[minid]])
-
-
 class DynamicWindow():
     def __init__(self):
         #ob = [[-1, -1]]
-        '''
-        ox = []
-        oy = []
-        for (x, y), (w, h) in zip(BORDER_POS, BORDER_BOX):
-            for i in np.arange(x-w, x+w, 0.1):
-                for j in np.arange(y-h, y+h, 0.1):
-                    ox.append(i)
-                    oy.append(j)
-        ob = np.zeros([50, 80, 2])
-        for ix in range(80):
-            x = ix / 10
-            for iy in range(50):
-                y = iy / 10
-                ob[iy, ix] = calc_repulsive_potential(x, y, ox, oy, 0.25)
-        plt.imshow(ob[:,:,1])
-        plt.show()
-        '''
         self.ob = np.load("ob.npy")
         self.config = Config()
 

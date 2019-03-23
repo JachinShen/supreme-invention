@@ -11,4 +11,5 @@ module load anaconda3/5.3.0
 
 source activate Gym
 
-python -u train.py
+#python -u train.py
+python -u train_on_memory.py
