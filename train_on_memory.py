@@ -11,7 +11,7 @@ from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 10
+TARGET_UPDATE = 100
 
 seed = 233
 torch.random.manual_seed(seed)

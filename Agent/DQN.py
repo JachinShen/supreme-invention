@@ -52,14 +52,14 @@ class DQN(nn.Module):
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=(3, 3)),  # 3x6 -> 5x8
+            nn.ConvTranspose2d(64, 32, kernel_size=(2, 2)),  # 3x6 -> 5x8
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(32, 16, kernel_size=(3, 3)),  # 5x8 -> 9x16
+            nn.ConvTranspose2d(32, 16, kernel_size=(2, 2)),  # 5x8 -> 9x16
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 1, kernel_size=(1, 1)),  # 13x22
+            nn.ConvTranspose2d(16, 4, kernel_size=(2, 2)),  # 17x28
             nn.LeakyReLU(),
-            #nn.ConvTranspose2d(2, 1, kernel_size=(4, 7)),  # 17x28
-            #nn.LeakyReLU(),
+            nn.ConvTranspose2d(4, 1, kernel_size=(2, 2)),  # 17x28
+            nn.LeakyReLU(),
             #nn.ConvTranspose2d(4, 1, kernel_size=(4, 7)),  # 21x34
             #nn.LeakyReLU(),
             #nn.ConvTranspose2d(1, 1, kernel_size=(5, 7)),  # 25x40
@@ -83,10 +83,10 @@ class DQN(nn.Module):
         last_value_map = s[:,2:3,:,:]
         feature_map_1 = self.conv1(window_map)
         feature_map_2 = self.conv2(enemy_map)
-        feature_map_3 = self.conv3(last_value_map)
-        #feature_map = feature_map_1*1e-8 +  feature_map_2 + feature_map_3*1e-8
-        #feature_map = feature_map_1*(feature_map_2+feature_map_3)
-        feature_map = feature_map_1 + feature_map_2 + feature_map_3
+        #feature_map_3 = self.conv3(last_value_map)
+        #feature_map = torch.cat([feature_map_1, feature_map_2, ], dim=1)
+        #feature_map = feature_map_1 + feature_map_2 + feature_map_3
+        feature_map = feature_map_1 + feature_map_2
 
         #batch, channel, w, h = feature_map.shape
         #feature_map = feature_map.reshape([batch, -1])

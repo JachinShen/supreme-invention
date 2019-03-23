@@ -14,7 +14,7 @@ from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 10
+TARGET_UPDATE = 500
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -28,8 +28,8 @@ agent = DQNAgent()
 agent2 = HandAgent()
 episode_durations = []
 
-num_episodes = 2000
-for i_episode in range(num_episodes):
+num_episodes = 1001
+for i_episode in range(1,num_episodes):
     print("Epoch: [{}/{}]".format(i_episode, num_episodes))
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -70,7 +70,7 @@ for i_episode in range(num_episodes):
         state_obs = next_state_obs
 
         # Perform one step of the optimization (on the target network)
-        agent.optimize_model()
+        #agent.optimize_model()
         if done:
             break
     print("Simulation end in: {}:{:02d}, reward: {}".format(
@@ -82,6 +82,7 @@ for i_episode in range(num_episodes):
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()
         agent.save()
+        agent.save_memory()
 
 print('Complete')
 env.close()
