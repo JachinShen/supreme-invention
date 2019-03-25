@@ -13,3 +13,4 @@ source activate Gym
 
 #python -u train.py
 python -u train_on_memory.py
+#python -u Agent/VAE.py

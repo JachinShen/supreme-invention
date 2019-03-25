@@ -118,8 +118,8 @@ class ICRAField(gym.Env, EzPickle):
             [13,20], [14,21], [16, 23],
             [21,22,23,17], [20,22,23,18], [20,21,23], [20,21,22,19]
         ]
-        random_index = random.randint(0,23)
-        #random_index = 5
+        #random_index = random.randint(0,23)
+        random_index = 5
         init_pos_0 = avaiable_pos[random_index]
         init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
 
@@ -259,10 +259,10 @@ class ICRAField(gym.Env, EzPickle):
             self.reward = self.robots["robot_0"].health - \
                 self.robots["robot_1"].health
 
-            pos = self.state_dict["robot_0"]["pos"]
-            e_pos = self.state_dict["robot_1"]["pos"]
-            distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
-            self.reward += 10/distance
+            #pos = self.state_dict["robot_0"]["pos"]
+            #e_pos = self.state_dict["robot_1"]["pos"]
+            #distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
+            #self.reward += 10/distance
 
             self.reward -= 1 * self.t * FPS
             step_reward = self.reward - self.prev_reward

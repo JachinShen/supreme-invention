@@ -1,12 +1,14 @@
 import random
-import torch
-import numpy as np
 from collections import namedtuple
 from itertools import count
 
-from ICRAField import ICRAField
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
+from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
@@ -20,12 +22,23 @@ np.random.seed(seed)
 random.seed(seed)
 
 agent = DQNAgent()
-#agent.load()
+# agent.load()
 agent.load_memory()
 
-for epoch in range(2000):
-    print("Epoch: [{}/{}]".format(epoch, 2000))
-    agent.optimize_model()
+losses = []
+for epoch in range(1200):
+    print("Epoch: [{}/{}]".format(epoch, 10000))
+    agent.optimize_model(is_test=False)
+    loss = agent.optimize_model(is_test=True)
+    losses.append(loss)
     if epoch % TARGET_UPDATE == 0:
+        print("Loss: {}".format(loss))
         agent.update_target_net()
         agent.save()
+
+plt.figure(figsize=(15, 9))
+plt.plot(losses)
+plt.title("Loss")
+plt.xlabel("Epoch")
+plt.ylabel("loss")
+plt.savefig("loss.pdf")

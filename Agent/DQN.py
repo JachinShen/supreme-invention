@@ -77,6 +77,16 @@ class DQN(nn.Module):
         self.map = ICRAMap().image.reshape(1, 1, 50, 80)
         self.map = torch.from_numpy(self.map).double().to(device)
 
+    def encode(self, s):
+        window_map = s[:,0:1,:,:]
+        enemy_map = s[:,1:2,:,:]
+        last_value_map = s[:,2:3,:,:]
+        feature_map_1 = self.conv1(window_map)
+        feature_map_2 = self.conv2(enemy_map)
+        feature_map = feature_map_1 + feature_map_2
+        return feature_map
+
+
     def forward(self, s):
         window_map = s[:,0:1,:,:]
         enemy_map = s[:,1:2,:,:]

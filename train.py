@@ -2,19 +2,21 @@
 https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import random
-import torch
-import numpy as np
 from collections import namedtuple
 from itertools import count
 
-from ICRAField import ICRAField
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
+from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 500
+TARGET_UPDATE = 10
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -29,7 +31,9 @@ agent2 = HandAgent()
 episode_durations = []
 
 num_episodes = 1001
-for i_episode in range(1,num_episodes):
+losses = []
+rewards = []
+for i_episode in range(1, num_episodes):
     print("Epoch: [{}/{}]".format(i_episode, num_episodes))
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -49,7 +53,7 @@ for i_episode in range(1,num_episodes):
         vel = (state[2], state[3])
         angle = state[4]
         v, omega = move.moveTo(pos, vel, angle, goal)
-        action[0] = v[0] 
+        action[0] = v[0]
         action[1] = omega
         action[2] = v[1]
         #e_pos = env.state_dict["robot_1"]["pos"]
@@ -70,19 +74,32 @@ for i_episode in range(1,num_episodes):
         state_obs = next_state_obs
 
         # Perform one step of the optimization (on the target network)
-        #agent.optimize_model()
+        if t % 10 == 0:
+            agent.optimize_model(is_test=False)
+            loss = agent.optimize_model(is_test=True)
         if done:
             break
     print("Simulation end in: {}:{:02d}, reward: {}".format(
         t//(60*30), t % (60*30)//30, env.reward))
+    print("Loss: {}".format(loss))
+    losses.append(loss)
+    rewards.append(env.reward)
     episode_durations.append(t + 1)
-    #agent2.reset()
+    # agent2.reset()
 
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()
         agent.save()
-        agent.save_memory()
+        # agent.save_memory()
 
 print('Complete')
+plt.plot(losses)
+plt.savefig("loss.pdf")
+plt.figure()
+plt.title("Reward")
+plt.xlabel("Epoch")
+plt.ylabel("Final reward")
+plt.plot(rewards)
+plt.savefig("reward.pdf")
 env.close()

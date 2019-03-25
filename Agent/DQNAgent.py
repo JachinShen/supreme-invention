@@ -28,7 +28,7 @@ from util.Grid import Map
 MARGIN = 50
 BATCH_SIZE = 512
 #GAMMA = 0.999
-GAMMA = 0.5
+GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 50
@@ -51,8 +51,11 @@ class ReplayMemory(object):
         self.memory[self.position] = Transition(*args)
         self.position = (self.position + 1) % self.capacity
 
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+    def sample(self, batch_size, is_test=False):
+        if is_test:
+            return self.memory[0:batch_size]
+        else:
+            return random.sample(self.memory[:], batch_size)
 
     def __len__(self):
         return len(self.memory)
@@ -106,7 +109,7 @@ class DQNAgent():
         self.whole_rand = torch.rand(self.grid_height, self.grid_width).double().to(device)
         self.predicted_value = None
         self.value_map = torch.zeros(1, 1, self.grid_height, self.grid_width).double().to(device)
-        #plt.imshow(self.gaussian, vmin=0, vmax=1)
+        #plt.imshow(self.obs_map, vmin=0, vmax=1, cmap="GnBu")
         #plt.show()
 
     def perprocess_state(self, state):
@@ -146,22 +149,14 @@ class DQNAgent():
             pos[:, :, 0] = x; pos[:, :, 1] = y
             rv = multivariate_normal(delta_pos[::-1], [[0.01, 0.0], [0.0, 0.01]])
             enemy_map = torch.from_numpy(rv.pdf(pos)).to(device).double()
-            #delta_pos = (np.array(e_p) - np.array(p))*self.scale
-            #delta_pos = np.array([delta_pos[0]+self.grid_width/2, delta_pos[1]+self.grid_height/2])
-            #delta_pos = np.clip(delta_pos,
-                #[ENEMY_SIZE, ENEMY_SIZE],
-                #[self.grid_width-ENEMY_SIZE-1, self.grid_height-ENEMY_SIZE-1]).astype("int")
-            #enemy_map[delta_pos[1]-ENEMY_SIZE:delta_pos[1]+ENEMY_SIZE,
-                      #delta_pos[0]-ENEMY_SIZE:delta_pos[0]+ENEMY_SIZE] = 1
         if False:
             plt.cla()
             plt.xlim(0,self.grid_width-1)
             plt.ylim(0,self.grid_height-1)
-            plt.imshow(window_map, cmap="coolwarm")
-            plt.pause(0.00001)
+            plt.imshow(enemy_map, vmin=0, cmap="GnBu")
+            plt.pause(0.1)
         window_map = window_map.unsqueeze(0).unsqueeze(1)
         enemy_map = enemy_map.unsqueeze(0).unsqueeze(1)
-        #state = torch.cat([window_map, enemy_map, self.value_map], dim=1) # 1, 3, h, w
         state = torch.cat([window_map, enemy_map, self.value_map], dim=1) # 1, 3, h, w
         return state
 
@@ -183,33 +178,39 @@ class DQNAgent():
             self.policy_net.eval()
             self.value_map = self.policy_net(state_obs)
             value_map = self.value_map[0][0]
+            #semantic = self.policy_net.encode(state_obs)
 
         #if is_test or sample > eps_threshold:
         if is_test:
-            #value_map += torch.rand([self.grid_height, self.grid_width]).to(device).double()
             value_map *= self.obs_map[bottom:top, left:right]
-            #value_map /= value_map.sum()
             h, w = value_map.shape
-            #value_map = value_map.reshape([w*h])
-            #value_map = torch.softmax(value_map, dim=0)
-            #value_map = value_map.cpu().numpy()
             if is_test:
                 plt.cla()
                 plt.xlim(0,self.grid_width-1)
                 plt.ylim(0,self.grid_height-1)
-                #plt.imshow(value_map.cpu().numpy().reshape([h,w]), cmap="coolwarm", vmin=0, )
-                plt.imshow(value_map, cmap="coolwarm", vmin=0, )
+                plt.imshow(value_map.cpu().numpy().reshape([h,w]), cmap="coolwarm", vmin=0, )
+                #plt.imshow(semantic[0][10], cmap="GnBu", vmin=0, )
                 plt.pause(0.00001)
-            '''
-            value_map = value_map.reshape([w*h])
-            selected = np.random.choice(range(w*h), p=value_map)
-            y = selected // w
-            x = selected % w
-            '''
             col_max, col_max_indice = value_map.max(dim=0)
             max_col_max, max_col_max_indice = col_max.max(dim=0)
             x = max_col_max_indice.item()
             y = col_max_indice[x].item()
+            self.local_goal = [x, y]
+            x += (left-MARGIN)
+            y += (bottom-MARGIN)
+            x = x/self.map_width*8.0
+            y = y/self.map_height*5.0
+            self.global_goal = [x, y]
+        #else:
+        elif sample > eps_threshold:
+            value_map *= self.obs_map[bottom:top, left:right]
+            h, w = value_map.shape
+            value_map = value_map.reshape([w*h])
+            value_map /= value_map.sum()
+            value_map = value_map.cpu().numpy()
+            selected = np.random.choice(range(w*h), p=value_map)
+            y = selected // w
+            x = selected % w
             self.local_goal = [x, y]
             x += (left-MARGIN)
             y += (bottom-MARGIN)
@@ -233,27 +234,8 @@ class DQNAgent():
             x = x/self.map_width*8.0
             y = y/self.map_height*5.0
             self.global_goal = [x, y]
-            #col_max, col_max_indice = value_map.max(0)
-            #max_col_max, max_col_max_indice = col_max.max(0)
-            #x = max_col_max_indice.item()
-            #y = col_max_indice[x].item()
-            ##x = x/40.0*8.0
-            #y = y/25.0*5.0
         
-   #x, y = random.random()*8.0, random.random()*5.0
-
         return [x, y]
-        '''
-        self.target = (x, y)
-        try:
-            self.move.setGoal(pos, self.target)
-        except:
-            return action
-        self.steps_done += 1
-
-        action = self.move.moveTo(pos, vel, angle, angular, action)
-        return action
-        '''
 
     def push(self, next_state, reward):
         device = self.device
@@ -264,11 +246,11 @@ class DQNAgent():
         reward = torch.tensor([reward], device=device).double().unsqueeze(0)
         self.memory.push(self.state_obs, goal, next_state, reward)
 
-    def optimize_model(self):
+    def optimize_model(self, is_test):
         if len(self.memory) < BATCH_SIZE:
             return
         device = self.device
-        transitions = self.memory.sample(BATCH_SIZE)
+        transitions = self.memory.sample(BATCH_SIZE, is_test)
         # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
         # detailed explanation). This converts batch-array of Transitions
         # to Transition of batch-arrays.
@@ -318,15 +300,18 @@ class DQNAgent():
         #loss = F.smooth_l1_loss(state_action_values,
                                 #expected_state_action_values)
         loss = torch.mean(-torch.log(state_action_values)*expected_state_action_values)
-        loss += regular_term
+        #loss += regular_term
 
-        # Optimize the model
-        self.optimizer.zero_grad()
-        loss.backward()
-        for param in self.policy_net.parameters():
-            if param.grad is not None:
-                param.grad.data.clamp_(-1, 1)
-        self.optimizer.step()
+        if not is_test:
+            # Optimize the model
+            self.optimizer.zero_grad()
+            loss.backward()
+            for param in self.policy_net.parameters():
+                if param.grad is not None:
+                    param.grad.data.clamp_(-1, 1)
+            self.optimizer.step()
+
+        return loss.item()
 
     def optimize(self, state_action_values, expected_state_action_values):
         # Compute Huber loss
