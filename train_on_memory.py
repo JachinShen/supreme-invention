@@ -26,7 +26,7 @@ agent = DQNAgent()
 agent.load_memory()
 
 losses = []
-for epoch in range(1200):
+for epoch in range(10000):
     print("Epoch: [{}/{}]".format(epoch, 10000))
     agent.optimize_model(is_test=False)
     loss = agent.optimize_model(is_test=True)

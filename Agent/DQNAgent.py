@@ -294,7 +294,7 @@ class DQNAgent():
         next_state_values[non_final_mask] = value
         # Compute the expected Q values
         expected_state_action_values = (
-            next_state_values * GAMMA) + reward_batch
+            next_state_values * GAMMA) + reward_batch * 1e-2
 
         # Compute Huber loss
         #loss = F.smooth_l1_loss(state_action_values,
