@@ -14,10 +14,11 @@ class Bullet:
         self.ctr = 1
 
     def shoot(self, init_angle, init_pos):
+        MIN_RANGE = 0.9
         angle = init_angle
         x, y = init_pos
-        x += math.cos(angle) * 0.35
-        y += math.sin(angle) * 0.35
+        x += math.cos(angle) * MIN_RANGE
+        y += math.sin(angle) * MIN_RANGE
         bullet = self.world.CreateDynamicBody(
             position=(x, y),
             angle=angle,
@@ -33,7 +34,7 @@ class Bullet:
         bullet.color = (0.0, 0.0, 0.0)
         bullet.userData = "bullet_{}".format(self.ctr)
         self.ctr += 1
-        bullet.linearVelocity = (math.cos(angle)*10, math.sin(angle)*10)
+        bullet.linearVelocity = (math.cos(angle)*5, math.sin(angle)*5)
         self.bullets[bullet.userData] = bullet
 
     def draw(self, viewer):

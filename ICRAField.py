@@ -89,17 +89,6 @@ class ICRAField(gym.Env, EzPickle):
 
         self.robots = {}
 
-        '''
-        avaiable_pos = [
-            [0.5, 0.5], [0.5, 1.5], [0.5, 2.5], [0.5, 3.5],
-            [1.5, 0.5], [1.5, 4.5], [1.5, 3.5],
-            [2.5, 0.5], [2.5, 1.5], [2.5, 2.5], [2.5, 3.5],
-            [4.0, 1.5], [4.0, 3.5],
-            [5.5, 0.5], [5.5, 1.5], [5.5, 2.5], [5.5, 3.5],
-            [6.5, 0.5], [6.5, 1.5], [6.5, 4.5],
-            [7.5, 0.5], [7.5, 1.5], [7.5, 2.5], [7.5, 3.5]
-        ]
-        '''
         avaiable_pos = [
             [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5], # 0 1 2 3 
             [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
@@ -197,9 +186,9 @@ class ICRAField(gym.Env, EzPickle):
 
     def detectEnemy(self, robot_id):
         detected = {}
-        for i in range(-170, 170, 5):
+        for i in range(-45, 45, 2):
             angle, pos = self.robots[robot_id].getAnglePos()
-            angle += math.pi/2
+            #angle += math.pi/2
             angle += i/180*math.pi
             p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
@@ -465,14 +454,14 @@ if __name__ == "__main__":
         vel = (s[2], s[3])
         ang = s[4]
         target = (3.5, 4.5)   # origin (0.5, 0.5)
-        move.setGoal(pos, target, 0.0)
+        #move.setGoal(pos, target, 0.0)
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
             angle = s[4]
             angular = env.state_dict["robot_0"]["angular"]
-            a = move.moveTo(pos, vel, angle, angular, a)
+            #a = move.moveTo(pos, vel, angle, angular, a)
             # a = agent.run(s, a) # Dont Shoot yet
             total_reward += r
 

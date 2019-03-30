@@ -102,11 +102,11 @@ class Robot:
             localAnchorA=(0, 0),
             localAnchorB=(0, 0),
             enableMotor=True,
-            enableLimit=False,
+            enableLimit=True,
             maxMotorTorque=180*900*SIZE*SIZE,
             motorSpeed=0.0,
-            #lowerAngle = -math.pi,
-            #upperAngle = +math.pi,
+            lowerAngle = -math.pi/4,
+            upperAngle = +math.pi/4,
         ))
         self.gun.color = (0.1, 0.1, 0.1)
 
@@ -115,7 +115,7 @@ class Robot:
         self.drawlist = self.wheels + [self.hull, self.gun]
         self.group = group
         self.robot_id = robot_id
-        self.health = 1000.0
+        self.health = 2000.0
         self.buffLeftTime = 0
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
 
