@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 from Agent.DQNAgent import DQNAgent
+from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
@@ -25,7 +26,7 @@ np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
-agent = DQNAgent()
+agent = ActorCriticAgent()
 #agent.load()
 agent2 = HandAgent()
 episode_durations = []

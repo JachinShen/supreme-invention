@@ -8,6 +8,7 @@ import torch
 
 from Agent.DQNAgent import DQNAgent
 from Agent.HandAgent import HandAgent
+from Agent.ActorCriticAgent import ActorCriticAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
 
@@ -21,19 +22,18 @@ torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
 
-agent = DQNAgent()
+agent = ActorCriticAgent()
 # agent.load()
-agent.load_memory()
+agent.load_memory("replay.memory")
 
 losses = []
-for epoch in range(10000):
-    print("Epoch: [{}/{}]".format(epoch, 10000))
-    agent.optimize_model(is_test=False)
-    loss = agent.optimize_model(is_test=True)
+for epoch in range(800):
+    print("Epoch: [{}/{}]".format(epoch, 800))
+    agent.optimize_model()
+    loss = agent.test_model()
     losses.append(loss)
     if epoch % TARGET_UPDATE == 0:
         print("Loss: {}".format(loss))
-        agent.update_target_net()
         agent.save()
 
 plt.figure(figsize=(15, 9))

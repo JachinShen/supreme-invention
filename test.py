@@ -9,6 +9,7 @@ import numpy as np
 import torch
 
 from Agent.DQNAgent import DQNAgent
+from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
@@ -17,14 +18,14 @@ move = NaiveMove()
 
 TARGET_UPDATE = 10
 
-seed = 14
+seed = 233
 torch.random.manual_seed(seed)
 torch.cuda.random.manual_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
-agent = DQNAgent()
+agent = ActorCriticAgent()
 agent2 = HandAgent()
 agent.load()
 device = agent.device

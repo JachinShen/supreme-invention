@@ -3,12 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-import sys
 from torch.autograd import Variable
-sys.path.append(".")
-from util.Grid import Map
+#import sys
+#sys.path.append(".")
+#from util.Grid import Map
 
-from Referee.ICRAMap import ICRAMap
+#from Referee.ICRAMap import ICRAMap
 
 class DQN(nn.Module):
     def __init__(self):
@@ -71,11 +71,11 @@ class DQN(nn.Module):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.grid = torch.from_numpy(grid).to(device).double()
         self.device = device
-        '''
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.map = ICRAMap().image.reshape(1, 1, 50, 80)
         self.map = torch.from_numpy(self.map).double().to(device)
+        '''
 
     def encode(self, s):
         window_map = s[:,0:1,:,:]
