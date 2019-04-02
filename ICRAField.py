@@ -186,7 +186,7 @@ class ICRAField(gym.Env, EzPickle):
 
     def detectEnemy(self, robot_id):
         detected = {}
-        for i in range(-45, 45, 2):
+        for i in range(-40, 40, 2):
             angle, pos = self.robots[robot_id].getAnglePos()
             #angle += math.pi/2
             angle += i/180*math.pi
@@ -197,10 +197,10 @@ class ICRAField(gym.Env, EzPickle):
             u = self.detect_callback.userData
             if u in self.robots.keys():
                 if u not in detected.keys():
-                    p = detected[u] = self.detect_callback.point
-                    pos = self.robots[robot_id].getPos()
-                    p = (p[0] - pos[0], p[1] - pos[1])
-                    angle = math.atan2(p[1], p[0])
+                    #p = detected[u] = self.detect_callback.point
+                    #pos = self.robots[robot_id].getPos()
+                    #p = (p[0] - pos[0], p[1] - pos[1])
+                    #angle = math.atan2(p[1], p[0])
                     # Auto shoot
                     self.robots[robot_id].setCloudTerrance(angle)
 
