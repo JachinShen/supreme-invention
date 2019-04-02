@@ -75,8 +75,8 @@ class ActorCriticAgent():
         icra_map = Map(self.map_width, self.map_height)
         grid = icra_map.getGrid()
         self.obs_map = torch.from_numpy(1-grid).to(device)
-        #self.whole_map = torch.from_numpy(np.load("ob.npy")).to(device)
-        self.whole_map = torch.from_numpy(1-grid).to(device)
+        self.whole_map = torch.from_numpy(np.load("ob.npy")).to(device)
+        #self.whole_map = torch.from_numpy(1-grid).to(device)
 
         self.view_width, self.view_height = 0.8, 0.5 # m(half)
         self.grid_width, self.grid_height = int(self.map_width*(self.view_width*2/8)), int(self.map_height*(self.view_height*2/5))
@@ -87,14 +87,14 @@ class ActorCriticAgent():
         pos[:, :, 0] = x
         pos[:, :, 1] = y
         self.pos = pos
-        rv = multivariate_normal([0.0, -0.0], [[0.001, 0.0], [0.0, 0.001]])
+        rv = multivariate_normal([0.0, -0.0], [[0.01, 0.0], [0.0, 0.01]])
         gaussian = torch.from_numpy(rv.pdf(pos)).to(device).double()
         #self.gaussian = gaussian.unsqueeze(0).unsqueeze(0).repeat(BATCH_SIZE,1,1,1)
         self.gaussian = gaussian
         self.whole_rand = torch.rand(self.grid_height, self.grid_width).double().to(device)
         self.predicted_value = None
         self.value_map = torch.zeros(1, 1, self.grid_height, self.grid_width).double().to(device)
-        #plt.imshow(self.obs_map, vmin=0, vmax=1, cmap="GnBu")
+        #plt.imshow(self.gaussian, vmin=0, cmap="GnBu")
         #plt.show()
 
     def perprocess_state(self, state):
@@ -120,7 +120,7 @@ class ActorCriticAgent():
             #pos[:, :, 0] = x; pos[:, :, 1] = y
             pos = self.pos
             rv = multivariate_normal(delta_pos[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            enemy_map = torch.from_numpy(rv.pdf(pos)).to(device).double()
+            enemy_map = torch.from_numpy(rv.pdf(pos)).to(device).double() / 100.0
         if False:
             plt.cla()
             plt.xlim(0,self.grid_width-1)
@@ -242,7 +242,7 @@ class ActorCriticAgent():
         ### Critic ###
         value_eval = self.critic(state_batch)
         next_value_eval = self.critic(next_state_batch)
-        td_error = reward_batch + GAMMA*next_value_eval - value_eval
+        td_error = reward_batch / 100.0 + GAMMA*next_value_eval - value_eval
         loss = torch.sum(td_error ** 2)
         self.optimizer_critic.zero_grad()
         loss.backward()
@@ -285,10 +285,10 @@ class ActorCriticAgent():
             ### Critic ###
             value_eval = self.critic(state_batch)
             next_value_eval = self.critic(next_state_batch)
-            td_error = reward_batch + GAMMA*next_value_eval - value_eval
+            td_error = reward_batch / 100.0 + GAMMA*next_value_eval - value_eval
 
             ### Actor ###
-            state_batch = Variable(state_batch, requires_grad=True)
+            #state_batch = Variable(state_batch, requires_grad=True)
             state_action_prob = self.actor(state_batch) # batch, 1, 10, 16
             action_batch = action_batch[:,1:]*state_action_prob.size(3)+action_batch[:,:1]
             state_action_prob = state_action_prob.reshape([BATCH_SIZE, -1])

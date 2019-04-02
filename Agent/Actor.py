@@ -9,23 +9,23 @@ class Actor(nn.Module):
     def __init__(self):
         super(Actor, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(2, 4, 2), # 5x8 -> 4x7
+            nn.Conv2d(2, 4, 3), # 20x32 -> 18x30
             nn.LeakyReLU(),
-            nn.Conv2d(4, 16, 2), # 3x6
+            nn.Conv2d(4, 16, 3), # 16x28
             nn.LeakyReLU(),
-            nn.Conv2d(16, 32, 2), # 3x6
+            nn.Conv2d(16, 32, 3), # 14x26
             nn.LeakyReLU(),
-            nn.Conv2d(32, 64, 2), # 3x6
+            nn.Conv2d(32, 64, 3), # 12x24
             nn.LeakyReLU(),
         )
         self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=(2, 2)),  # 3x6 -> 5x8
+            nn.ConvTranspose2d(64, 32, kernel_size=3),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(32, 16, kernel_size=(2, 2)),  # 5x8 -> 9x16
+            nn.ConvTranspose2d(32, 16, kernel_size=3),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 4, kernel_size=(2, 2)),  # 17x28
+            nn.ConvTranspose2d(16, 4, kernel_size=3),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(4, 1, kernel_size=(2, 2)),  # 17x28
+            nn.ConvTranspose2d(4, 1, kernel_size=3),
             nn.LeakyReLU(),
         )
 

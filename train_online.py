@@ -30,7 +30,7 @@ agent = ActorCriticAgent()
 agent2 = HandAgent()
 episode_durations = []
 
-num_episodes = 1001
+num_episodes = 201
 losses = []
 rewards = []
 for i_episode in range(1, num_episodes):

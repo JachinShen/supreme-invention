@@ -24,11 +24,12 @@ random.seed(seed)
 
 agent = ActorCriticAgent()
 # agent.load()
-agent.load_memory("replay.memory")
+agent.load_memory("replay-1000.memory")
 
 losses = []
-for epoch in range(800):
-    print("Epoch: [{}/{}]".format(epoch, 800))
+NUM_EPOCH = 2000
+for epoch in range(NUM_EPOCH):
+    print("Epoch: [{}/{}]".format(epoch, NUM_EPOCH))
     agent.optimize_model()
     loss = agent.test_model()
     losses.append(loss)
@@ -36,6 +37,7 @@ for epoch in range(800):
         print("Loss: {}".format(loss))
         agent.save()
 
+print("Complete!")
 plt.figure(figsize=(15, 9))
 plt.plot(losses)
 plt.title("Loss")
