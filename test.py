@@ -46,7 +46,10 @@ for i_episode in range(num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        goal = agent.select_action(state_map, True)
+        if state[-1] > 0 and state[-3] > 0:
+            goal = agent.select_action(state_map, "max_probability")
+        else:
+            goal = agent.select_action(state_map, "random")
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         angle = state[4]

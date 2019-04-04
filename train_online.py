@@ -49,7 +49,10 @@ for i_episode in range(1, num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        goal = agent.select_action(state_map)
+        if state[-1] > 0 and state[-3] > 0:
+            goal = agent.select_action(state_map, "sample")
+        else:
+            goal = agent.select_action(state_map, "random")
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         angle = state[4]
@@ -70,7 +73,8 @@ for i_episode in range(1, num_episodes):
         next_state_map = agent.perprocess_state(next_state)
 
         # Store the transition in memory
-        agent.push(next_state_map, reward)
+        if state[-1] > 0 and state[-3] > 0:
+            agent.push(next_state_map, reward)
         state = next_state
         state_map = next_state_map
 

@@ -132,7 +132,7 @@ class ActorCriticAgent():
         state_map = torch.cat([window_map, enemy_map, self.value_map], dim=1) # 1, 3, h, w
         return state_map
 
-    def select_action(self, state_map, is_test=False):
+    def select_action(self, state_map, mode):
         device = self.device
         action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -146,17 +146,15 @@ class ActorCriticAgent():
         left, right, bottom, top = self.window
         self.state_obs = state_map
 
-        with torch.no_grad():
-            #self.policy_net.eval()
-            self.value_map = self.actor(state_map)
-            value_map = self.value_map[0][0]
-            #semantic = self.policy_net.encode(state_obs)
-
         #if is_test or sample > eps_threshold:
-        if is_test:
+        if mode == "max_probability":
+            with torch.no_grad():
+                #self.policy_net.eval()
+                self.value_map = self.actor(state_map)
+                value_map = self.value_map[0][0]
             value_map *= self.obs_map[bottom:top, left:right]
             h, w = value_map.shape
-            if is_test:
+            if True:
                 plt.cla()
                 plt.xlim(0,self.grid_width-1)
                 plt.ylim(0,self.grid_height-1)
@@ -174,7 +172,12 @@ class ActorCriticAgent():
             y = y/self.map_height*5.0
             self.global_goal = [x, y]
         #else:
-        elif sample > eps_threshold:
+        #elif sample > eps_threshold:
+        elif mode == "sample":
+            with torch.no_grad():
+                #self.policy_net.eval()
+                self.value_map = self.actor(state_map)
+                value_map = self.value_map[0][0]
             value_map *= self.obs_map[bottom:top, left:right]
             h, w = value_map.shape
             value_map = value_map.reshape([w*h])
@@ -189,7 +192,7 @@ class ActorCriticAgent():
             x = x/self.map_width*8.0
             y = y/self.map_height*5.0
             self.global_goal = [x, y]
-        else:
+        elif mode == "random":
             self.whole_rand = self.whole_rand*0.9 + torch.rand(top-bottom, right-left).double().to(device)*0.1
             value_map = self.whole_rand
             value_map -= self.gaussian[0][0]
