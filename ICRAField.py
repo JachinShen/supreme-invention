@@ -197,7 +197,7 @@ class ICRAField(gym.Env, EzPickle):
             u = self.detect_callback.userData
             if u in self.robots.keys():
                 if u not in detected.keys():
-                    #p = detected[u] = self.detect_callback.point
+                    p = detected[u] = self.detect_callback.point
                     #pos = self.robots[robot_id].getPos()
                     #p = (p[0] - pos[0], p[1] - pos[1])
                     #angle = math.atan2(p[1], p[0])

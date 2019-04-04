@@ -72,7 +72,7 @@ class HandAgent():
         if ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 0.1):
             self.index = random.choice(self.connected[self.index])
             self.target = self.avaiable_pos[self.index]
-            print(self.target)
+            #print(self.target)
             #self.index = (self.index + 1) % len(self.path)
             #self.target = self.path[self.index]
 

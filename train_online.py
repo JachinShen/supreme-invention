@@ -4,6 +4,7 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 import random
 from collections import namedtuple
 from itertools import count
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,9 +42,9 @@ for i_episode in range(1, num_episodes):
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
     state_map = agent.perprocess_state(state)
-    for t in range(2*60*30):
-        if t % (60*30) == 0:
-            print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
+    for t in tqdm(range(2*60*30)):
+        #if t % (60*30) == 0:
+            #print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
         # Other agent
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))

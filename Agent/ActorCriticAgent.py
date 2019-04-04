@@ -87,7 +87,7 @@ class ActorCriticAgent():
         pos[:, :, 0] = x
         pos[:, :, 1] = y
         self.pos = pos
-        rv = multivariate_normal([0.0, -0.0], [[0.01, 0.0], [0.0, 0.01]])
+        rv = multivariate_normal([0.0, -0.0], [[0.001, 0.0], [0.0, 0.001]])
         gaussian = torch.from_numpy(rv.pdf(pos)).to(device).double()
         #self.gaussian = gaussian.unsqueeze(0).unsqueeze(0).repeat(BATCH_SIZE,1,1,1)
         self.gaussian = gaussian
