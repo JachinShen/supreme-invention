@@ -207,7 +207,7 @@ class Robot:
             #0.5 + self.command["rotate"] * 2
         #torque = self.hull.mass * omega
         #self.hull.ApplyTorque(torque, True)
-        self.hull.angularVelocity = self.command["rotate"]
+        self.hull.angularVelocity = self.command["rotate"] * 3
 
     def draw(self, viewer):
         for obj in self.drawlist:

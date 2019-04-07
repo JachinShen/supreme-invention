@@ -11,7 +11,9 @@ module load anaconda3/5.3.0
 
 source activate Gym
 
+#python -u example.py
+
 #python -u collect_memory.py
-python -u train_online.py
-#python -u train_on_memory.py
+#python -u train_online/train_online.py
+python -u train_offline/train_offline.py
 #python -u Agent/VAE.py

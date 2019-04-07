@@ -8,7 +8,6 @@ from itertools import count
 import numpy as np
 import torch
 
-from Agent.DQNAgent import DQNAgent
 from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
@@ -27,7 +26,7 @@ random.seed(seed)
 env = ICRAField()
 agent = ActorCriticAgent()
 agent2 = HandAgent()
-agent.load()
+agent.load_model()
 device = agent.device
 episode_durations = []
 
@@ -46,15 +45,19 @@ for i_episode in range(num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
+        goal = agent.select_action(state_map, "sample")
+        print(goal)
+        '''
         if state[-1] > 0 and state[-3] > 0:
             goal = agent.select_action(state_map, "max_probability")
         else:
-            goal = agent.select_action(state_map, "random")
+            goal = agent.select_action(state_map, "sample")
+        '''
         pos = (state[0], state[1])
         vel = (state[2], state[3])
         angle = state[4]
         v, omega = move.moveTo(pos, vel, angle, goal)
-        action[0] = v[0] 
+        action[0] = v[0]
         action[1] = omega
         action[2] = v[1]
         if state[-1] > 0 and state[-3] > 0:

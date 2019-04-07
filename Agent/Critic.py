@@ -9,25 +9,31 @@ class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(2, 4, 3), # 20x32 -> 18x30
-            nn.MaxPool2d(2, 2), # 9x15
+            nn.Conv2d(3, 8, 3), # 160x100 -> 158x98
+            nn.MaxPool2d(2, 2), # 79x49
             nn.LeakyReLU(),
-            nn.Conv2d(4, 16, 2), # 8x14
-            nn.MaxPool2d(2, 2), # 4x7
+            nn.Conv2d(8, 16, 3), # 77x47
+            nn.MaxPool2d(2, 2), # 39x24
             nn.LeakyReLU(),
-            nn.Conv2d(16, 32, 3), # 2x5
+            nn.Conv2d(16, 32, 3), # 37x22
+            nn.MaxPool2d(2, 2), # 19x11
             nn.LeakyReLU(),
-            nn.Conv2d(32, 64, 2), # 1x4
+            nn.Conv2d(32, 64, 3), # 17x9
+            nn.MaxPool2d(2, 2), # 9x5
             nn.LeakyReLU(),
+            nn.Conv2d(64, 64, 3), # 7x3
+            nn.LeakyReLU(),
+            nn.Conv2d(64, 64, 2), # 5x1
         )
         self.fc = nn.Sequential(
-            nn.Linear(64*4, 64),
+            nn.Linear(64*5, 64),
             nn.LeakyReLU(),
             nn.Linear(64, 1),
+            nn.Tanh(),
         )
 
     def forward(self, s):
-        feature_map = self.conv(s[:,0:2,:])
+        feature_map = self.conv(s)
         batch, channel, w, h = feature_map.shape
         feature_map = feature_map.reshape([batch, -1])
         value_eval = self.fc(feature_map)

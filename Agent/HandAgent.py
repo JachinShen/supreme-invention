@@ -63,7 +63,7 @@ class HandAgent():
         angle = state[4]
         if state[-1] > 0 and state[-3] > 0:
             pass
-            #action[4] = +1.0
+            action[4] = +1.0
             #return action
             #self.target = (state[-4], state[-3])
             #self.move = MoveAction(self.target, pos, vel, angle)

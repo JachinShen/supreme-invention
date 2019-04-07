@@ -17,7 +17,8 @@ from Referee.ICRAContactListener import ICRAContactListener
 from Referee.ICRAMap import ICRAMap
 from Referee.SupplyArea import SupplyAreas
 from SupportAlgorithm.DetectCallback import detectCallback
-from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
+#from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
+from SupportAlgorithm.NaiveMove import NaiveMove
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -253,7 +254,7 @@ class ICRAField(gym.Env, EzPickle):
             #distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
             #self.reward += 10/distance
 
-            self.reward -= 1 * self.t * FPS
+            #self.reward -= 1 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True
@@ -265,7 +266,7 @@ class ICRAField(gym.Env, EzPickle):
 
         return self.getStateArray("robot_0"), step_reward, done, {}
 
-    def render(self, mode='human'):
+    def render(self, mode='god'):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
@@ -312,8 +313,13 @@ class ICRAField(gym.Env, EzPickle):
         # self.transform.set_rotation(angle)
 
         self.map.draw(self.viewer)
-        for robot_name in self.robots.keys():
-            self.robots[robot_name].draw(self.viewer)
+        if mode == 'god':
+            for robot_name in self.robots.keys():
+                self.robots[robot_name].draw(self.viewer)
+        elif mode == "fps":
+            self.robots["robot_0"].draw(self.viewer)
+            if self.state_dict["robot_0"]["robot_1"][0] >= 0:
+                self.robots["robot_1"].draw(self.viewer)
         self.bullets.draw(self.viewer)
 
         arr = None
@@ -322,18 +328,18 @@ class ICRAField(gym.Env, EzPickle):
             win.switch_to()
             win.dispatch_events()
 
-        if mode == 'human':
-            self.human_render = True
-            win.clear()
-            t = self.transform
-            gl.glViewport(0, 0, WINDOW_W, WINDOW_H)
-            t.enable()
-            self.render_background()
-            for geom in self.viewer.onetime_geoms:
-                geom.render()
-            t.disable()
-            self.render_indicators(WINDOW_W, WINDOW_H)
-            win.flip()
+        #if mode == 'god':
+        self.human_render = True
+        win.clear()
+        t = self.transform
+        gl.glViewport(0, 0, WINDOW_W, WINDOW_H)
+        t.enable()
+        self.render_background()
+        for geom in self.viewer.onetime_geoms:
+            geom.render()
+        t.disable()
+        self.render_indicators(WINDOW_W, WINDOW_H)
+        win.flip()
 
         self.viewer.onetime_geoms = []
         return arr
@@ -383,9 +389,19 @@ class ICRAField(gym.Env, EzPickle):
 
 
 if __name__ == "__main__":
-    from pyglet.window import key
+    from pyglet.window import key, mouse
     # gas, rotate, transverse, rotate cloud terrance, shoot, reload
     a = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    target = [0, 0]
+
+    def on_mouse_release(x, y, button, modifiers):
+        x_low, x_high, y_low, y_high = 168, 1033, 249, 789
+        width = x_high - x_low
+        height = y_high - y_low
+        x = (x - x_low) / width * 8.0
+        y = (y - y_low) / height * 5.0
+        target[0] = x
+        target[1] = y
 
     def key_press(k, mod):
         global restart
@@ -443,7 +459,8 @@ if __name__ == "__main__":
         env.monitor.start('/tmp/video-test', force=True)
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
-    move = GlobalLocalPlanner()
+    env.viewer.window.on_mouse_release = on_mouse_release
+    move = NaiveMove()
     while True:
         env.reset()
         total_reward = 0.0
@@ -453,16 +470,18 @@ if __name__ == "__main__":
         pos = (s[0], s[1])
         vel = (s[2], s[3])
         ang = s[4]
-        target = (3.5, 4.5)   # origin (0.5, 0.5)
-        #move.setGoal(pos, target, 0.0)
+        target[0] = s[0]
+        target[1] = s[1]
         while True:
             s, r, done, info = env.step(a)
             pos = (s[0], s[1])
             vel = (s[2], s[3])
             angle = s[4]
             angular = env.state_dict["robot_0"]["angular"]
-            #a = move.moveTo(pos, vel, angle, angular, a)
-            # a = agent.run(s, a) # Dont Shoot yet
+            #v, omega = move.moveTo(pos, vel, angle, target)
+            #a[0] = v[0]
+            #a[1] = omega * 3
+            #a[2] = v[1]
             total_reward += r
 
             if steps % 200 == 0 or done:
