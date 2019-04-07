@@ -14,8 +14,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from Agent.Actor import Actor
-from Agent.Critic import Critic
+from Agent.Actor import ActorCritic
 from util.Grid import MARGIN, Map
 
 BATCH_SIZE = 256
@@ -87,15 +86,9 @@ class ActorCriticAgent():
         # if gpu is to be used
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
-
-        self.actor = Actor().to(device).double()
-        self.critic = Critic().to(device).double()
-
-        self.optimizer_actor = optim.Adam(self.actor.parameters(), lr=1e-3)
-        self.optimizer_critic = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.model = ActorCritic().to(device).double()
+        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
         self.memory = ReplayMemory(100000)
-
-        self.steps_done = 0
 
         self.scale = 20.0
         self.map_width = int(8*self.scale)
@@ -127,45 +120,16 @@ class ActorCriticAgent():
     def perprocess_state(self, state):
         p = state[:2]
         e_p = state[-2:]
-        '''
-        left, bottom = p[0]-self.view_width, p[1]-self.view_height
-        left, bottom = int(left*self.scale), int(bottom*self.scale)
-        left += MARGIN
-        bottom += MARGIN
-        right = left + self.grid_width
-        top = bottom + self.grid_height
-        self.window = (left, right, bottom, top)
-        window_map = (self.whole_map[bottom:top, left:right])
-        enemy_map = (torch.zeros((self.grid_height), (self.grid_width)).to(device).double())
-        '''
         window_map = self.whole_map
         pos = self.pos
         rv = multivariate_normal(p[::-1], [[0.01, 0.0], [0.0, 0.01]])
         pos_map = torch.from_numpy(rv.pdf(pos)).double()
         rv = multivariate_normal(e_p[::-1], [[0.01, 0.0], [0.0, 0.01]])
         enemy_map = torch.from_numpy(rv.pdf(pos)).double()
-        '''
-        if e_p[0] > 0:
-            ENEMY_SIZE = 2
-            delta_pos = (np.array(e_p) - np.array(p))
-            delta_pos = np.clip(delta_pos, [-0.8, -0.5], [0.8, 0.5])
-            #x, y = np.mgrid[-0.5:0.5:1/self.scale,
-                            #-0.8:0.8:1/self.scale]
-            #pos = np.empty(x.shape + (2,))
-            #pos[:, :, 0] = x; pos[:, :, 1] = y
-            pos = self.pos
-            rv = multivariate_normal(delta_pos[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            enemy_map = torch.from_numpy(rv.pdf(pos)).to(device).double() / 100.0
-        '''
         if False:
             plt.cla()
-            #plt.xlim(0, self.grid_width-1)
-            #plt.ylim(0, self.grid_height-1)
             plt.imshow(pos_map, vmin=0, cmap="GnBu")
             plt.pause(0.0001)
-        #window_map = window_map.unsqueeze(0).unsqueeze(1)
-        #pos_map = pos_map.unsqueeze(0).unsqueeze(1)
-        #enemy_map = enemy_map.unsqueeze(0).unsqueeze(1)
         state_map = torch.stack(
             [window_map, pos_map, enemy_map], dim=0)  # 3, h, w
         return state_map.unsqueeze(0)
@@ -174,10 +138,9 @@ class ActorCriticAgent():
         device = self.device
 
         with torch.no_grad():
-            self.actor.eval()
+            self.model.eval()
             state_map = state_map.to(device)
-            x, y = self.actor(state_map)
-            v = self.critic(state_map)
+            x, y, v = self.model(state_map)
             #print(v)
         # mu: [0, 1]
         #mu, std = mu.cpu().numpy()[0], std.cpu().numpy()[0]
@@ -257,42 +220,24 @@ class ActorCriticAgent():
         reward_batch = reward_batch.to(device)
         next_state_batch = next_state_batch.to(device)
 
-        self.actor.train()
-        ### Critic ###
-        value_eval = self.critic(state_batch)
-        #next_value_eval = self.critic(next_state_batch)
-        #td_error = (reward_batch + 2) / 1000.0 + GAMMA*next_value_eval - value_eval
-        #loss = torch.sum(td_error ** 2)
-        td_error = reward_batch / 4000.0 - value_eval
-        loss = F.smooth_l1_loss(value_eval, reward_batch / 4000.0)
-        self.optimizer_critic.zero_grad()
-        loss.backward()
-        for param in self.critic.parameters():
-            if param.grad is not None:
-                param.grad.data.clamp_(-1, 1)
-        self.optimizer_critic.step()
-
-        ### Actor ###
+        self.model.train()
         state_batch = Variable(state_batch, requires_grad=True)
-        x, y = self.actor(state_batch)  # batch, 1, 10, 16
-        #plt.cla()
-        #plt.imshow(x.detach().numpy())
-        #plt.pause(0.00001)
+        x, y, value_eval = self.model(state_batch)  # batch, 1, 10, 16
+        ### Critic ###
+        td_error = reward_batch - value_eval
+        #loss = F.smooth_l1_loss(value_eval, reward_batch)
+        ### Actor ###
         prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-        loss = -prob.sum()
-        #prob = normal(action_batch, mu, std)
-        #action_batch = action_batch[:,1:]*state_action_prob.size(3)+action_batch[:,:1]
-        #state_action_prob = state_action_prob.reshape([BATCH_SIZE, -1])
-        #state_action_prob = state_action_prob.gather(1, action_batch)
-        #log_prob = torch.log(prob)
-        #exp_v = torch.mean(log_prob * td_error.detach())
-        #loss = -exp_v
-        self.optimizer_actor.zero_grad()
+        #loss = -prob.sum()
+        log_prob = torch.log(prob)
+        exp_v = torch.mean(log_prob * td_error.detach())
+        loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
+        self.optimizer.zero_grad()
         loss.backward()
-        for param in self.actor.parameters():
+        for param in self.model.parameters():
             if param.grad is not None:
                 param.grad.data.clamp_(-1, 1)
-        self.optimizer_actor.step()
+        self.optimizer.step()
 
         return loss.item()
 
@@ -314,36 +259,27 @@ class ActorCriticAgent():
         next_state_batch = next_state_batch.to(device)
 
         with torch.no_grad():
-            self.actor.eval()
+            self.model.eval()
+            x, y, value_eval = self.model(state_batch)  # batch, 1, 10, 16
             ### Critic ###
-            value_eval = self.critic(state_batch)
-            #next_value_eval = self.critic(next_state_batch)
-            #td_error = reward_batch / 100.0 + GAMMA*next_value_eval - value_eval
-            td_error = reward_batch / 4000.0 - value_eval
-            loss_c = F.smooth_l1_loss(value_eval, reward_batch / 4000.0)
-
+            td_error = reward_batch - value_eval
             ### Actor ###
-            x, y = self.actor(state_batch)  # batch, 1, 10, 16
             prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-            #prob = normal(action_batch, mu, std)
             log_prob = torch.log(prob)
             exp_v = torch.mean(log_prob * td_error.detach())
-            loss_a = -exp_v
+            loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
 
-        return loss_c.item(), loss_a.item()
+        return loss.item()
 
     def save_model(self):
-        torch.save(self.actor.state_dict(), "Actor.model")
-        torch.save(self.critic.state_dict(), "Critic.model")
+        torch.save(self.model.state_dict(), "Actor.model")
 
     def save_memory(self, file_name):
         torch.save(self.memory, file_name)
 
     def load_model(self):
-        self.actor.load_state_dict(torch.load(
+        self.model.load_state_dict(torch.load(
             "Actor.model", map_location=self.device))
-        self.critic.load_state_dict(torch.load(
-            "Critic.model", map_location=self.device))
 
     def load_memory(self, file_name):
         self.memory = torch.load(file_name)

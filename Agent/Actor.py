@@ -6,9 +6,9 @@ import numpy as np
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-class Actor(nn.Module):
+class ActorCritic(nn.Module):
     def __init__(self):
-        super(Actor, self).__init__()
+        super(ActorCritic, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(3, 32, 8, 4), # 160x100 -> 158x98
             nn.ReLU(),
@@ -17,6 +17,7 @@ class Actor(nn.Module):
         )
         self.fc = nn.Sequential(
             nn.Linear(64*7*12, 128),
+            nn.ReLU(),
         )
         self.head_x = nn.Sequential(
             nn.Linear(128, 32), # 8x4
@@ -26,35 +27,20 @@ class Actor(nn.Module):
             nn.Linear(128, 20), # 5x4
             nn.Softmax(dim=1),
         )
-        '''
-        self.fc_std = nn.Sequential(
-            nn.Linear(64*5*1, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 2),
-            nn.Sigmoid(),
+        self.head_v = nn.Sequential(
+            nn.Linear(128, 1),
         )
-        self.dconv = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=3),
-            nn.LeakyReLU(),
-            nn.ConvTranspose2d(32, 16, kernel_size=3),
-            nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 4, kernel_size=3),
-            nn.LeakyReLU(),
-            nn.ConvTranspose2d(4, 1, kernel_size=3),
-            nn.LeakyReLU(),
-        )
-        '''
 
     def forward(self, s):
         feature_map = self.conv(s[:,:])
         batch, channel, h, w = feature_map.shape
         feature_map = feature_map.reshape([batch, -1])
         head = self.fc(feature_map)
-        x, y = self.head_x(head), self.head_y(head)
-        return x, y
+        x, y, v = self.head_x(head), self.head_y(head), self.head_v(head)
+        return x, y, v
 
 if __name__=="__main__":
     x = torch.rand([1,3,100,160])
-    model = Actor()
+    model = ActorCritic()
     y = model(x)
     print(y)
