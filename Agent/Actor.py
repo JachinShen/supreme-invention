@@ -10,36 +10,20 @@ class Actor(nn.Module):
     def __init__(self):
         super(Actor, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 8, 3), # 160x100 -> 158x98
-            nn.MaxPool2d(2, 2), # 79x49
-            nn.BatchNorm2d(8),
+            nn.Conv2d(3, 32, 8, 4), # 160x100 -> 158x98
             nn.ReLU(),
-            nn.Conv2d(8, 16, 3), # 77x47
-            nn.MaxPool2d(2, 2), # 39x24
-            nn.BatchNorm2d(16),
+            nn.Conv2d(32, 64, 6, 3), # 77x47
             nn.ReLU(),
-            nn.Conv2d(16, 32, 3), # 37x22
-            nn.MaxPool2d(2, 2), # 19x11
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, 3), # 17x9
-            nn.MaxPool2d(2, 2), # 9x5
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 3), # 7x3
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 2), # 5x1
         )
         self.fc = nn.Sequential(
-            nn.Linear(64*5*1, 64),
+            nn.Linear(64*7*12, 128),
         )
         self.head_x = nn.Sequential(
-            nn.Linear(64, 32), # 8x4
+            nn.Linear(128, 32), # 8x4
             nn.Softmax(dim=1),
         )
         self.head_y = nn.Sequential(
-            nn.Linear(64, 20), # 5x4
+            nn.Linear(128, 20), # 5x4
             nn.Softmax(dim=1),
         )
         '''
@@ -62,12 +46,8 @@ class Actor(nn.Module):
         '''
 
     def forward(self, s):
-        feature_map = self.conv(s[:,1:2])
+        feature_map = self.conv(s[:,:])
         batch, channel, h, w = feature_map.shape
-        plt.cla()
-        #plt.imshow(head.detach().numpy())
-        plt.imshow(feature_map.sum(1)[0].detach().numpy())
-        plt.pause(0.00001)
         feature_map = feature_map.reshape([batch, -1])
         head = self.fc(feature_map)
         x, y = self.head_x(head), self.head_y(head)

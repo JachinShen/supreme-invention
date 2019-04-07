@@ -14,6 +14,6 @@ source activate Gym
 #python -u example.py
 
 #python -u collect_memory.py
-#python -u train_online/train_online.py
-python -u train_offline/train_offline.py
+python -u train_online/train_online.py
+#python -u train_offline/train_offline.py
 #python -u Agent/VAE.py

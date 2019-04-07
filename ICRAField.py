@@ -246,16 +246,21 @@ class ICRAField(gym.Env, EzPickle):
         done = False
         # First step without action, called from reset()
         if self.actions["robot_0"] is not None:
-            self.reward = self.robots["robot_0"].health - \
-                self.robots["robot_1"].health
+            self.reward = (self.robots["robot_0"].health - \
+                self.robots["robot_1"].health) / 2000.0
 
             #pos = self.state_dict["robot_0"]["pos"]
             #e_pos = self.state_dict["robot_1"]["pos"]
             #distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
             #self.reward += 10/distance
 
-            self.reward += 10 * self.t * FPS
+            #self.reward += 10 * self.t * FPS
             step_reward = self.reward - self.prev_reward
+            if self.state_dict["robot_0"]["robot_1"][0] > 0:
+                step_reward += 0.0002
+            if sum(self.actions["robot_0"][0:4]) <= 1e-5:
+                step_reward -= 0.00002
+
             if self.robots["robot_0"].health <= 0:
                 done = True
                 #step_reward -= 1000
