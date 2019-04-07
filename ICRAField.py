@@ -254,7 +254,7 @@ class ICRAField(gym.Env, EzPickle):
             #distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
             #self.reward += 10/distance
 
-            #self.reward -= 1 * self.t * FPS
+            self.reward += 10 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.robots["robot_0"].health <= 0:
                 done = True

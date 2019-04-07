@@ -26,7 +26,7 @@ random.seed(seed)
 env = ICRAField()
 agent = ActorCriticAgent()
 agent2 = HandAgent()
-agent.load_model()
+#agent.load_model()
 device = agent.device
 episode_durations = []
 
@@ -45,7 +45,7 @@ for i_episode in range(num_episodes):
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        goal = agent.select_action(state_map, "sample")
+        goal = agent.select_action(state_map, "max_probability")
         print(goal)
         '''
         if state[-1] > 0 and state[-3] > 0:

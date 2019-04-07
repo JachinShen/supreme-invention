@@ -25,8 +25,8 @@ np.random.seed(seed)
 random.seed(seed)
 
 agent = ActorCriticAgent()
-agent.load_model()
-agent.load_memory("resources/replay-5.memory")
+#agent.load_model()
+agent.load_memory("resources/replay-1.memory")
 agent.optimize_offline(50)
 agent.save_model()
 

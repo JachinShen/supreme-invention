@@ -19,7 +19,7 @@ from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 5
+TARGET_UPDATE = 1
 
 seed = 233
 torch.random.manual_seed(seed)

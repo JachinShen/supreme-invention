@@ -30,7 +30,7 @@ random.seed(seed)
 
 env = ICRAField()
 agent = ActorCriticAgent()
-agent.load_model()
+#agent.load_model()
 agent2 = HandAgent()
 episode_durations = []
 
@@ -88,10 +88,10 @@ for i_episode in range(1, num_episodes):
             break
 
     print("Simulation end in: {}:{:02d}, reward: {}".format(t//(60*30), t % (60*30)//30, env.reward))
-    for i in tqdm(range(10)):
-        agent.optimize_online()
-    loss = agent.test_model()
-    print("Test loss: {}".format(loss))
+    agent.memory.finish_epoch()
+    loss = agent.optimize_offline(1)
+    #loss = agent.test_model()
+    #print("Test loss: {}".format(loss))
     losses.append(loss)
     rewards.append(env.reward)
     episode_durations.append(t + 1)

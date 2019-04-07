@@ -38,37 +38,48 @@ class ReplayMemory(object):
 
     def __init__(self, capacity):
         self.capacity = capacity
-        self.memory = []
+        self.epoch_memory = []
+        self.main_memory = []
         self.position = 0
-        self.epoch_begin = 0
+        #self.epoch_begin = 0
 
     def push(self, *args):
         """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
+        self.epoch_memory.append(Transition(*args))
+        #if len(self.main_memory) < self.capacity:
+            #self.main_memory.append(None)
+        #self.main_memory[self.position] = Transition(*args)
+        #self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size, is_test=False):
         if is_test:
-            return self.memory[0:batch_size]
+            return self.main_memory[0:batch_size]
         else:
-            return random.sample(self.memory[:max(self.epoch_begin,batch_size)], batch_size)
+            return random.sample(self.main_memory, batch_size)
 
     def finish_epoch(self):
         R = 0
-        for i in range(self.position-1, self.epoch_begin-1, -1):
-            state, action, next_state, reward = self.memory[i]
-            reward = reward[0]
-            R = reward + GAMMA*R
-            self.memory[i] = Transition(state, action, next_state, [R])
-        self.epoch_begin = self.position
+        if len(self.main_memory) < self.capacity - len(self.epoch_memory):
+            for t in self.epoch_memory[::-1]:
+                state, action, next_state, reward = t
+                reward = reward[0]
+                R = reward + GAMMA*R
+                self.main_memory.append(Transition(state, action, next_state, [R]))
+        else:
+            for t in self.epoch_memory[::-1]:
+                state, action, next_state, reward = t
+                reward = reward[0]
+                R = reward + GAMMA*R
+                self.main_memory[self.position] = Transition(state, action, next_state, [R])
+                self.position = (self.position + 1) % self.capacity
+        del self.epoch_memory
+        self.epoch_memory = []
 
     def __len__(self):
-        return len(self.memory)
+        return len(self.main_memory)
 
     def __getitem__(self, index):
-        return self.memory[index]
+        return self.main_memory[index]
 
 
 class ActorCriticAgent():
@@ -80,8 +91,8 @@ class ActorCriticAgent():
         self.actor = Actor().to(device).double()
         self.critic = Critic().to(device).double()
 
-        self.optimizer_actor = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.optimizer_critic = optim.Adam(self.critic.parameters(), lr=1e-4)
+        self.optimizer_actor = optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.optimizer_critic = optim.Adam(self.critic.parameters(), lr=1e-3)
         self.memory = ReplayMemory(100000)
 
         self.steps_done = 0
@@ -130,9 +141,9 @@ class ActorCriticAgent():
         window_map = self.whole_map
         pos = self.pos
         rv = multivariate_normal(p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-        pos_map = torch.from_numpy(rv.pdf(pos)).double() / 10.0
+        pos_map = torch.from_numpy(rv.pdf(pos)).double()
         rv = multivariate_normal(e_p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-        enemy_map = torch.from_numpy(rv.pdf(pos)).double() / 10.0
+        enemy_map = torch.from_numpy(rv.pdf(pos)).double()
         '''
         if e_p[0] > 0:
             ENEMY_SIZE = 2
@@ -150,7 +161,7 @@ class ActorCriticAgent():
             plt.cla()
             #plt.xlim(0, self.grid_width-1)
             #plt.ylim(0, self.grid_height-1)
-            plt.imshow(enemy_map, vmin=0, cmap="GnBu")
+            plt.imshow(pos_map, vmin=0, cmap="GnBu")
             plt.pause(0.0001)
         #window_map = window_map.unsqueeze(0).unsqueeze(1)
         #pos_map = pos_map.unsqueeze(0).unsqueeze(1)
@@ -163,14 +174,22 @@ class ActorCriticAgent():
         device = self.device
 
         with torch.no_grad():
+            self.actor.eval()
             state_map = state_map.to(device)
             x, y = self.actor(state_map)
             v = self.critic(state_map)
             #print(v)
         # mu: [0, 1]
         #mu, std = mu.cpu().numpy()[0], std.cpu().numpy()[0]
-        x = x.cpu().numpy()[0]
-        y = y.cpu().numpy()[0]
+        x = x.cpu().numpy()
+        y = y.cpu().numpy()
+
+        if True:
+            plt.cla()
+            plt.imshow(x)
+            plt.pause(0.00001)
+
+        x, y = x[0], y[0]
 
         if mode == "max_probability":
             x = np.argmax(x)
@@ -204,9 +223,9 @@ class ActorCriticAgent():
         pos = self.pos
         for p, e_p in state:
             rv = multivariate_normal(p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            pos_map = torch.from_numpy(rv.pdf(pos)).double() / 10.0
+            pos_map = torch.from_numpy(rv.pdf(pos)).double()
             rv = multivariate_normal(e_p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            enemy_map = torch.from_numpy(rv.pdf(pos)).double() / 10.0
+            enemy_map = torch.from_numpy(rv.pdf(pos)).double()
 
             state_map.append(torch.stack(
                 [window_map, pos_map, enemy_map], dim=0))  # 3, h, w
@@ -238,6 +257,7 @@ class ActorCriticAgent():
         reward_batch = reward_batch.to(device)
         next_state_batch = next_state_batch.to(device)
 
+        self.actor.train()
         ### Critic ###
         value_eval = self.critic(state_batch)
         #next_value_eval = self.critic(next_state_batch)
@@ -255,14 +275,18 @@ class ActorCriticAgent():
         ### Actor ###
         state_batch = Variable(state_batch, requires_grad=True)
         x, y = self.actor(state_batch)  # batch, 1, 10, 16
+        #plt.cla()
+        #plt.imshow(x.detach().numpy())
+        #plt.pause(0.00001)
         prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
+        loss = -prob.sum()
         #prob = normal(action_batch, mu, std)
         #action_batch = action_batch[:,1:]*state_action_prob.size(3)+action_batch[:,:1]
         #state_action_prob = state_action_prob.reshape([BATCH_SIZE, -1])
         #state_action_prob = state_action_prob.gather(1, action_batch)
-        log_prob = torch.log(prob)
-        exp_v = torch.mean(log_prob * td_error.detach())
-        loss = -exp_v
+        #log_prob = torch.log(prob)
+        #exp_v = torch.mean(log_prob * td_error.detach())
+        #loss = -exp_v
         self.optimizer_actor.zero_grad()
         loss.backward()
         for param in self.actor.parameters():
@@ -290,6 +314,7 @@ class ActorCriticAgent():
         next_state_batch = next_state_batch.to(device)
 
         with torch.no_grad():
+            self.actor.eval()
             ### Critic ###
             value_eval = self.critic(state_batch)
             #next_value_eval = self.critic(next_state_batch)
@@ -332,7 +357,7 @@ class ActorCriticAgent():
             reward_batch = torch.tensor(batch.reward).double()
             return state_batch, action_batch, reward_batch, next_state_batch
 
-        dataloader = DataLoader(self.memory.memory, batch_size=BATCH_SIZE,
+        dataloader = DataLoader(self.memory.main_memory, batch_size=64,
                                 shuffle=True, collate_fn=batch_state_map, num_workers=10, pin_memory=True)
         device = self.device
         for epoch in range(num_epoch):
@@ -341,3 +366,4 @@ class ActorCriticAgent():
                 loss = self.optimize_once(data)
             loss = self.test_model()
             print("Test loss: {}".format(loss))
+        return loss
