@@ -87,7 +87,7 @@ class ActorCriticAgent():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.model = ActorCritic().to(device).double()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-4)
         self.memory = ReplayMemory(100000)
 
         self.scale = 20.0
@@ -118,21 +118,7 @@ class ActorCriticAgent():
         # plt.show()
 
     def perprocess_state(self, state):
-        p = state[:2]
-        e_p = state[-2:]
-        window_map = self.whole_map
-        pos = self.pos
-        rv = multivariate_normal(p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-        pos_map = torch.from_numpy(rv.pdf(pos)).double()
-        rv = multivariate_normal(e_p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-        enemy_map = torch.from_numpy(rv.pdf(pos)).double()
-        if False:
-            plt.cla()
-            plt.imshow(pos_map, vmin=0, cmap="GnBu")
-            plt.pause(0.0001)
-        state_map = torch.stack(
-            [window_map, pos_map, enemy_map], dim=0)  # 3, h, w
-        return state_map.unsqueeze(0)
+        return torch.tensor([state]).double() # 1x2xseq
 
     def select_action(self, state_map, mode):
         device = self.device
@@ -140,60 +126,21 @@ class ActorCriticAgent():
         with torch.no_grad():
             self.model.eval()
             state_map = state_map.to(device)
-            x, y, v = self.model(state_map)
+            a, v = self.model(state_map)
             #print(v)
-        # mu: [0, 1]
-        #mu, std = mu.cpu().numpy()[0], std.cpu().numpy()[0]
-        x = x.cpu().numpy()
-        y = y.cpu().numpy()
-
-        if True:
-            plt.cla()
-            plt.imshow(x)
-            plt.pause(0.00001)
-
-        x, y = x[0], y[0]
+        a = a.cpu().numpy()[0]
 
         if mode == "max_probability":
-            x = np.argmax(x)
-            y = np.argmax(y)
-            #x = mu[0] * 8.0
-            #y = mu[1] * 5.0
+            a = np.argmax(a)
         elif mode == "sample":
-            x = np.random.choice(range(32),p=x)
-            y = np.random.choice(range(20),p=y)
-            #sample = mu + std * np.random.randn(2)
-            #x = sample[0] * 8.0
-            #y = sample[1] * 5.0
+            a = np.random.choice(range(6),p=a)
+        return a
 
-        x = x / 32.0 * 8.0
-        y = y / 20.0 * 5.0
-        return [x, y]
-
-    def push(self, state, next_state, goal, reward):
-        device = self.device
-        # goal: [0, 8], [0, 5]
-        normalized_goal = [goal[0] / 8.0, goal[1] / 5.0]
-        #goal = torch.tensor(goal).to(device).double().unsqueeze(0)
-        #next_state = torch.tensor(next_state).to(device).double().unsqueeze(0)
-        #state = torch.tensor(state).to(device).double().unsqueeze(0)
-        #reward = torch.tensor([reward]).to(device).double().unsqueeze(0)
-        self.memory.push(state, normalized_goal, next_state, reward)
+    def push(self, state, next_state, action, reward):
+        self.memory.push(state, action, next_state, reward)
 
     def make_state_map(self, state):
-        state_map = []
-        window_map = self.whole_map
-        pos = self.pos
-        for p, e_p in state:
-            rv = multivariate_normal(p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            pos_map = torch.from_numpy(rv.pdf(pos)).double()
-            rv = multivariate_normal(e_p[::-1], [[0.01, 0.0], [0.0, 0.01]])
-            enemy_map = torch.from_numpy(rv.pdf(pos)).double()
-
-            state_map.append(torch.stack(
-                [window_map, pos_map, enemy_map], dim=0))  # 3, h, w
-        state_map = torch.stack(state_map, dim=0)  # batch, 3, h, w
-        return state_map
+        return torch.tensor(state).double() # batchx2xseq
 
     def sample_memory(self, is_test=False):
         device = self.device
@@ -222,13 +169,12 @@ class ActorCriticAgent():
 
         self.model.train()
         state_batch = Variable(state_batch, requires_grad=True)
-        x, y, value_eval = self.model(state_batch)  # batch, 1, 10, 16
+        a, value_eval = self.model(state_batch)  # batch, 1, 10, 16
         ### Critic ###
         td_error = reward_batch - value_eval
-        #loss = F.smooth_l1_loss(value_eval, reward_batch)
         ### Actor ###
-        prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-        #loss = -prob.sum()
+        #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
+        prob = a.gather(1, action_batch.long())
         log_prob = torch.log(prob)
         exp_v = torch.mean(log_prob * td_error.detach())
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
@@ -260,11 +206,12 @@ class ActorCriticAgent():
 
         with torch.no_grad():
             self.model.eval()
-            x, y, value_eval = self.model(state_batch)  # batch, 1, 10, 16
+            a, value_eval = self.model(state_batch)  # batch, 1, 10, 16
             ### Critic ###
             td_error = reward_batch - value_eval
             ### Actor ###
-            prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
+            #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
+            prob = a.gather(1, action_batch.long())
             log_prob = torch.log(prob)
             exp_v = torch.mean(log_prob * td_error.detach())
             loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
@@ -293,7 +240,7 @@ class ActorCriticAgent():
             reward_batch = torch.tensor(batch.reward).double()
             return state_batch, action_batch, reward_batch, next_state_batch
 
-        dataloader = DataLoader(self.memory.main_memory, batch_size=64,
+        dataloader = DataLoader(self.memory.main_memory, batch_size=BATCH_SIZE,
                                 shuffle=True, collate_fn=batch_state_map, num_workers=10, pin_memory=True)
         device = self.device
         for epoch in range(num_epoch):

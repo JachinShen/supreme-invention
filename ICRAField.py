@@ -91,33 +91,35 @@ class ICRAField(gym.Env, EzPickle):
         self.robots = {}
 
         avaiable_pos = [
-            [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5], # 0 1 2 3 
+            [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5],  # 0 1 2 3
             [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
-            [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5], # 7 8 9 10
+            [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5],  # 7 8 9 10
             [4.0, 1.75], [4.0, 3.25],                         # 11 12
-            [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5], # 13 14 15 16
+            [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5],  # 13 14 15 16
             [6.5, 0.5], [6.5, 2.0], [6.5, 4.5],             # 17 18 19
             [7.5, 0.5], [7.5, 2.0], [7.5, 3.0], [7.5, 4.5]  # 20 21 22 23
         ]
         connected = [
-            [1,2,3,4], [0,2,3], [0,1,3,5], [0,1,2,6],
-            [0,7], [2,9], [3,10],
-            [8,9,10,4], [7,9,10,11], [7,8,10,5,12], [7,8,9],
-            [8,14], [9, 15],
-            [14,15,16,17], [13,15,16,18,11,11,11,11,11], [13,14,16,12,12,12,12,12], [13,14,15,19],
-            [13,20], [14,21], [16, 23],
-            [21,22,23,17], [20,22,23,18], [20,21,23], [20,21,22,19]
+            [1, 2, 3, 4], [0, 2, 3], [0, 1, 3, 5], [0, 1, 2, 6],
+            [0, 7], [2, 9], [3, 10],
+            [8, 9, 10, 4], [7, 9, 10, 11], [7, 8, 10, 5, 12], [7, 8, 9],
+            [8, 14], [9, 15],
+            [14, 15, 16, 17], [13, 15, 16, 18, 11, 11, 11, 11, 11], [
+                13, 14, 16, 12, 12, 12, 12, 12], [13, 14, 15, 19],
+            [13, 20], [14, 21], [16, 23],
+            [21, 22, 23, 17], [20, 22, 23, 18], [20, 21, 23], [20, 21, 22, 19]
         ]
         #random_index = random.randint(0,23)
         random_index = 5
         init_pos_0 = avaiable_pos[random_index]
-        init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
+        #init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
+        init_pos_1 = avaiable_pos[9]
 
         self.robots['robot_0'] = Robot(
-            self.world, np.pi/2, init_pos_0[0], init_pos_0[1],
+            self.world, 0, init_pos_0[0], init_pos_0[1],
             'robot_0', 0, 'red', COLOR_RED)
         self.robots['robot_1'] = Robot(
-            self.world, -np.pi, init_pos_1[0], init_pos_1[1],
+            self.world, 0, init_pos_1[0], init_pos_1[1],
             'robot_1', 1, 'blue', COLOR_BLUE)
 
         self.map = ICRAMap(self.world)
@@ -127,17 +129,17 @@ class ICRAField(gym.Env, EzPickle):
 
         self.state_dict["robot_0"] = {
             "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
-            "robot_0": (-1, -1), "robot_1": (-1, -1)
+            "robot_0": (-1, -1), "robot_1": (-1, -1), "detect": [],
         }
         self.state_dict["robot_1"] = {
             "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
-            "robot_0": (-1, -1), "robot_1": (-1, -1)
+            "robot_0": (-1, -1), "robot_1": (-1, -1),
         }
         self.actions["robot_0"] = None
         self.actions["robot_1"] = None
 
         return init_pos_1
-        #return self.step(None)[0]
+        # return self.step(None)[0]
 
     def getStateArray(self, robot_id):
         robot_state = self.state_dict[robot_id]
@@ -209,6 +211,25 @@ class ICRAField(gym.Env, EzPickle):
             self.state_dict[robot_id][robot_name] = detected[robot_name] if robot_name in detected.keys(
             ) else (-1, -1)
 
+        if robot_id != "robot_0":
+            return
+
+        scan_distance, scan_type = [], []
+        for i in range(-90, 90, 5):
+            angle, pos = self.robots[robot_id].getAnglePos()
+            angle += i/180*math.pi
+            p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
+            p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
+                  pos[1] + SCAN_RANGE*math.sin(angle))
+            self.world.RayCast(self.detect_callback, p1, p2)
+            scan_distance.append(self.detect_callback.fraction)
+            u = self.detect_callback.userData
+            if u in self.robots.keys():
+                scan_type.append(1)
+            else:
+                scan_type.append(0)
+        self.state_dict["robot_0"]["detect"] = [scan_distance, scan_type]
+
     def updateRobotState(self, robot_id):
         self.state_dict[robot_id][robot_id] = self.robots[robot_id].getPos()
         self.state_dict[robot_id]["health"] = self.robots[robot_id].health
@@ -246,8 +267,8 @@ class ICRAField(gym.Env, EzPickle):
         done = False
         # First step without action, called from reset()
         if self.actions["robot_0"] is not None:
-            self.reward = (self.robots["robot_0"].health - \
-                self.robots["robot_1"].health) / 2000.0
+            self.reward = (self.robots["robot_0"].health -
+                           self.robots["robot_1"].health) / 2000.0
 
             #pos = self.state_dict["robot_0"]["pos"]
             #e_pos = self.state_dict["robot_1"]["pos"]
@@ -258,8 +279,8 @@ class ICRAField(gym.Env, EzPickle):
             step_reward = self.reward - self.prev_reward
             if self.state_dict["robot_0"]["robot_1"][0] > 0:
                 step_reward += 0.0002
-            if sum(self.actions["robot_0"][0:4]) <= 1e-5:
-                step_reward -= 0.00002
+            if self.actions["robot_0"][0] == 0 and self.actions["robot_0"][2] == 0:
+                step_reward -= 0.0002
 
             if self.robots["robot_0"].health <= 0:
                 done = True
@@ -333,7 +354,7 @@ class ICRAField(gym.Env, EzPickle):
             win.switch_to()
             win.dispatch_events()
 
-        #if mode == 'god':
+        # if mode == 'god':
         self.human_render = True
         win.clear()
         t = self.transform

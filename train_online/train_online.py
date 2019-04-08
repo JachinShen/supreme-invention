@@ -20,7 +20,7 @@ from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 10
+TARGET_UPDATE = 100
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -34,7 +34,7 @@ agent = ActorCriticAgent()
 agent2 = HandAgent()
 episode_durations = []
 
-num_episodes = 201
+num_episodes = 1001
 losses = []
 rewards = []
 for i_episode in range(1, num_episodes):
@@ -44,42 +44,39 @@ for i_episode in range(1, num_episodes):
     pos = env.reset()
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
-    state_map = agent.perprocess_state(state)
     for t in tqdm(range(2*60*30)):
-        #if t % (60*30) == 0:
-            #print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
         # Other agent
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        goal = agent.select_action(state_map, "sample")
-        #if state[-1] > 0 and state[-3] > 0:
-            #goal = agent.select_action(state_map, "sample")
-        #else:
-            #goal = agent.select_action(state_map, "random")
-        pos = (state[0], state[1])
-        vel = (state[2], state[3])
-        angle = state[4]
-        v, omega = move.moveTo(pos, vel, angle, goal)
-        action[0] = v[0]
-        action[1] = omega
-        action[2] = v[1]
-        #e_pos = env.state_dict["robot_1"]["pos"]
-        #distance = (pos[0]-e_pos[0])**2 + (pos[1]-e_pos[1])**2
-        #reward += 10/distance
-        if state[-1] > 0 and state[-3] > 0:
+        state = env.state_dict["robot_0"]["detect"]
+        state_map = agent.perprocess_state(state)
+        a = agent.select_action(state_map, "sample")
+        action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        if a == 0:
+            action[0] = +1.0
+        elif a == 1:
+            action[0] = -1.0
+        elif a == 2:
+            action[1] = +1.0
+        elif a == 3:
+            action[1] = -1.0
+        elif a == 4:
+            action[2] = +1.0
+        elif a == 5:
+            action[2] = -1.0
+        if env.state_dict["robot_0"]["robot_1"][0] > 0:
             action[4] = +1.0
         else:
             action[4] = 0.0
 
         # Step
         next_state, reward, done, info = env.step(action)
+        next_state = env.state_dict["robot_0"]["detect"]
         next_state_map = agent.perprocess_state(next_state)
 
         # Store the transition in memory
-        agent.push([[state[0], state[1]], [state[-2], state[-1]]], 
-            [[next_state[0], next_state[1]], [next_state[-2], next_state[-1]]],
-            goal, [reward])
+        agent.push(state, next_state, [a], [reward])
         state = next_state
         state_map = next_state_map
 
