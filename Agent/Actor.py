@@ -10,7 +10,7 @@ class ActorCritic(nn.Module):
     def __init__(self):
         super(ActorCritic, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(36*2, 1024),
+            nn.Linear(135*2, 1024),
             nn.ReLU(),
             nn.Linear(1024, 256),
             nn.ReLU(),

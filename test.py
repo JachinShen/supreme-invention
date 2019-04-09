@@ -45,7 +45,7 @@ for i_episode in range(num_episodes):
         # Select and perform an action
         state = env.state_dict["robot_0"]["detect"]
         state_map = agent.perprocess_state(state)
-        a = agent.select_action(state_map, "sample")
+        a = agent.select_action(state_map, "max_probability")
         action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         if a == 0:
             action[0] = +1.0

@@ -17,7 +17,7 @@ from tqdm import tqdm
 from Agent.Actor import ActorCritic
 from util.Grid import MARGIN, Map
 
-BATCH_SIZE = 256
+BATCH_SIZE = 2048
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
@@ -58,7 +58,7 @@ class ReplayMemory(object):
 
     def finish_epoch(self):
         R = 0
-        if len(self.main_memory) < self.capacity - len(self.epoch_memory):
+        if len(self.main_memory) < self.capacity:
             for t in self.epoch_memory[::-1]:
                 state, action, next_state, reward = t
                 reward = reward[0]
@@ -87,7 +87,7 @@ class ActorCriticAgent():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.model = ActorCritic().to(device).double()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-4)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-5)
         self.memory = ReplayMemory(100000)
 
         self.scale = 20.0
@@ -133,6 +133,8 @@ class ActorCriticAgent():
         if mode == "max_probability":
             a = np.argmax(a)
         elif mode == "sample":
+            a += 0.01
+            a /= a.sum()
             a = np.random.choice(range(6),p=a)
         return a
 
@@ -180,9 +182,9 @@ class ActorCriticAgent():
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
         self.optimizer.zero_grad()
         loss.backward()
-        for param in self.model.parameters():
-            if param.grad is not None:
-                param.grad.data.clamp_(-1, 1)
+        #for param in self.model.parameters():
+            #if param.grad is not None:
+                #param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
         return loss.item()

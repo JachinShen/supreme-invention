@@ -110,6 +110,7 @@ class ICRAField(gym.Env, EzPickle):
             [21, 22, 23, 17], [20, 22, 23, 18], [20, 21, 23], [20, 21, 22, 19]
         ]
         #random_index = random.randint(0,23)
+        #random_index = random.randint(0,1)
         random_index = 5
         init_pos_0 = avaiable_pos[random_index]
         #init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
@@ -215,7 +216,7 @@ class ICRAField(gym.Env, EzPickle):
             return
 
         scan_distance, scan_type = [], []
-        for i in range(-90, 90, 5):
+        for i in range(-135, 135, 2):
             angle, pos = self.robots[robot_id].getAnglePos()
             angle += i/180*math.pi
             p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
@@ -485,8 +486,8 @@ if __name__ == "__main__":
         env.monitor.start('/tmp/video-test', force=True)
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
-    env.viewer.window.on_mouse_release = on_mouse_release
-    move = NaiveMove()
+    #env.viewer.window.on_mouse_release = on_mouse_release
+    #move = NaiveMove()
     while True:
         env.reset()
         total_reward = 0.0
