@@ -138,6 +138,7 @@ class ICRAField(gym.Env, EzPickle):
         }
         self.actions["robot_0"] = None
         self.actions["robot_1"] = None
+        self.reward = 0
 
         return init_pos_1
         # return self.step(None)[0]
@@ -167,7 +168,7 @@ class ICRAField(gym.Env, EzPickle):
         for bullet in collision_bullet_wall:
             self.bullets.destroyById(bullet)
         for robot in collision_robot_wall:
-            self.robots[robot].loseHealth(10)
+            self.robots[robot].loseHealth(2000)
         self.contactListener_keepref.clean()
 
     def stepAction(self, robot_name, action):
@@ -268,8 +269,8 @@ class ICRAField(gym.Env, EzPickle):
         done = False
         # First step without action, called from reset()
         if self.actions["robot_0"] is not None:
-            self.reward = (self.robots["robot_0"].health -
-                           self.robots["robot_1"].health) / 2000.0
+            #self.reward = (self.robots["robot_0"].health -
+                           #self.robots["robot_1"].health) / 2000.0
 
             #pos = self.state_dict["robot_0"]["pos"]
             #e_pos = self.state_dict["robot_1"]["pos"]
@@ -277,18 +278,19 @@ class ICRAField(gym.Env, EzPickle):
             #self.reward += 10/distance
 
             #self.reward += 10 * self.t * FPS
-            step_reward = self.reward - self.prev_reward
+            #step_reward = self.reward - self.prev_reward
             if self.state_dict["robot_0"]["robot_1"][0] > 0:
                 step_reward += 0.0002
-            if self.actions["robot_0"][0] == 0 and self.actions["robot_0"][2] == 0:
-                step_reward -= 0.0002
+            #if self.actions["robot_0"][0] == 0 and self.actions["robot_0"][2] == 0:
+                #step_reward -= 0.0002
 
             if self.robots["robot_0"].health <= 0:
                 done = True
-                #step_reward -= 1000
+                step_reward -= 1
             if self.robots["robot_1"].health <= 0:
                 done = True
-                #step_reward += 1000
+                step_reward += 1
+            self.reward += step_reward
             self.prev_reward = self.reward
 
         return self.getStateArray("robot_0"), step_reward, done, {}

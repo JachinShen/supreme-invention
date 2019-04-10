@@ -30,11 +30,11 @@ random.seed(seed)
 
 env = ICRAField()
 agent = ActorCriticAgent()
-#agent.load_model()
+agent.load_model()
 agent2 = HandAgent()
 episode_durations = []
 
-num_episodes = 201
+num_episodes = 1001
 losses = []
 rewards = []
 for i_episode in range(1, num_episodes):

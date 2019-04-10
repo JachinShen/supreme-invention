@@ -177,7 +177,7 @@ class ActorCriticAgent():
         ### Actor ###
         #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
         prob = a.gather(1, action_batch.long())
-        log_prob = torch.log(prob)
+        log_prob = torch.log(prob + 1e-6)
         exp_v = torch.mean(log_prob * td_error.detach())
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
         self.optimizer.zero_grad()
