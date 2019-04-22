@@ -51,7 +51,8 @@ for i_episode in range(num_episodes):
         pos = env.state_dict["robot_0"]["pos"]
         vel = env.state_dict["robot_0"]["velocity"]
         angle = env.state_dict["robot_0"]["angle"]
-        if goal is None or (goal[0]-pos[0])**2 + (goal[1]-pos[1])**2 < 0.1:
+        if goal is None or (goal[0]-pos[0])**2 + (goal[1]-pos[1])**2 < 0.001:
+            #print("Achieve goal x:{}, y:{}".format(pos[0], pos[1]))
             goal = agent.select_action(state)
         v, omega = move.moveTo(pos, vel, angle, goal)
         action[0] = v[0]

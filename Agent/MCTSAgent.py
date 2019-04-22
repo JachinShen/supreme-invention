@@ -105,8 +105,23 @@ def discreteRad(r):
     else:
         print("Error!")
         return None
-    
 
+def revertXYGrid(pos):
+    x, y = pos
+    x, y = x*574.0/8.0, y*360.0/5.0
+    x, y = int(x), int(y)
+    #print(x, y)
+    distance = np.zeros((7,4))
+    for i in range(7):
+        for j in range(4):
+            grid_pos = GRID_POS[i][j]
+            distance[i, j] = (grid_pos[0]-x)**2 + (grid_pos[1]-y)**2
+
+    min_id = int(np.argmin(distance))
+    #print("Revert grid x: {}, y: {}".format(min_id // 4, min_id % 4))
+    return min_id // 4, min_id % 4
+    
+    
 class Robot():
     def __init__(self, pos, direction, side):
         self.pos = pos
@@ -222,26 +237,29 @@ class Action():
 class MCTSAgent():
     def __init__(self):
         self.state = NaughtsAndCrossesState()
-        self.mcts = mcts(timeLimit=30)
+        self.mcts = mcts(timeLimit=100)
 
     def select_action(self, state):
+        self.state.currentPlayer = 0
         x, y = state["robot_0"]["pos"]
-        x, y = int(x/8.0*7.0), int(y/5.0*4.0)
-        self.state.robots[0].pos = [x, y]
+        #x, y = int(x/8.0*7.0), int(y/5.0*4.0)
+        self.state.robots[0].pos = revertXYGrid([x, y])
         self.state.robots[0].direction = discreteRad(state["robot_0"]["angle"])
         self.state.robots[0].health = state["robot_0"]["health"]
         x, y = state["robot_1"]["pos"]
         x, y = int(x/8.0*7.0), int(y/5.0*4.0)
+        #self.state.robots[1].pos = revertXYGrid([x, y])
         self.state.robots[1].pos = [x, y]
         self.state.robots[1].direction = discreteRad(state["robot_1"]["angle"])
         self.state.robots[1].health = state["robot_1"]["health"]
         action = self.mcts.search(initialState=self.state)
         #print(ACTION_STRING[action], state.getReward())
         self.state = self.state.takeAction(action)
-        print(self.state.index)
+        #print(self.state.index)
         x, y = self.state.robots[0].pos
+        print(x, y)
         x, y = GRID_POS[x][y]
-        x, y = x/574.0*8.0, y/360.0*4.0
+        x, y = x/574.0*8.0, y/360.0*5.0
         return [x, y]
 
     def reset(self):
