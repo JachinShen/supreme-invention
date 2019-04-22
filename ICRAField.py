@@ -111,10 +111,10 @@ class ICRAField(gym.Env, EzPickle):
         ]
         #random_index = random.randint(0,23)
         #random_index = random.randint(0,1)
-        random_index = 5
+        random_index = 0
         init_pos_0 = avaiable_pos[random_index]
         #init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
-        init_pos_1 = avaiable_pos[9]
+        init_pos_1 = avaiable_pos[23]
 
         self.robots['robot_0'] = Robot(
             self.world, 0, init_pos_0[0], init_pos_0[1],

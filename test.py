@@ -9,6 +9,7 @@ import numpy as np
 import torch
 
 from Agent.ActorCriticAgent import ActorCriticAgent
+from Agent.MCTSAgent import MCTSAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
@@ -24,10 +25,11 @@ np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
-agent = ActorCriticAgent()
+#agent = ActorCriticAgent()
+agent = MCTSAgent()
 agent2 = HandAgent()
-agent.load_model()
-device = agent.device
+#agent.load_model()
+#device = agent.device
 episode_durations = []
 
 num_episodes = 50
@@ -36,29 +38,25 @@ for i_episode in range(num_episodes):
     # Initialize the environment and state
     action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     pos = env.reset()
+    agent.reset()
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
+    goal = None
     for t in range(7*60*30):
         # Other agent
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
-        state = env.state_dict["robot_0"]["detect"]
-        state_map = agent.perprocess_state(state)
-        a = agent.select_action(state_map, "max_probability")
-        action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        if a == 0:
-            action[0] = +1.0
-        elif a == 1:
-            action[0] = -1.0
-        elif a == 2:
-            action[1] = +1.0
-        elif a == 3:
-            action[1] = -1.0
-        elif a == 4:
-            action[2] = +1.0
-        elif a == 5:
-            action[2] = -1.0
+        state = env.state_dict
+        pos = env.state_dict["robot_0"]["pos"]
+        vel = env.state_dict["robot_0"]["velocity"]
+        angle = env.state_dict["robot_0"]["angle"]
+        if goal is None or (goal[0]-pos[0])**2 + (goal[1]-pos[1])**2 < 0.1:
+            goal = agent.select_action(state)
+        v, omega = move.moveTo(pos, vel, angle, goal)
+        action[0] = v[0]
+        action[1] = omega * 3
+        action[2] = v[1]
         if env.state_dict["robot_0"]["robot_1"][0] > 0:
             action[4] = +1.0
         else:
@@ -66,13 +64,9 @@ for i_episode in range(num_episodes):
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state = env.state_dict["robot_0"]["detect"]
-        next_state_map = agent.perprocess_state(next_state)
+        next_state = env.state_dict
 
-        # Store the transition in memory
-        agent.push(state, next_state, [a], [reward])
         state = next_state
-        state_map = next_state_map
 
         env.render()
 
