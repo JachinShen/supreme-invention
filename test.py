@@ -53,6 +53,7 @@ for i_episode in range(num_episodes):
         angle = env.state_dict["robot_0"]["angle"]
         if goal is None or (goal[0]-pos[0])**2 + (goal[1]-pos[1])**2 < 0.001:
             #print("Achieve goal x:{}, y:{}".format(pos[0], pos[1]))
+        #if t % 30 == 0:
             goal = agent.select_action(state)
         v, omega = move.moveTo(pos, vel, angle, goal)
         action[0] = v[0]

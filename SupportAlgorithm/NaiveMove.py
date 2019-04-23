@@ -6,11 +6,11 @@ class NaiveMove:
         self.done = False
 
     def moveTo(self, pos, vel, angle, goal):
-        #if ((pos[0]-goal[0])**2 + (pos[1]-goal[1])**2) < 0.01:
-            #return [0, 0], 0
-            #self.done = True
-        #else:
-            #self.done = False
+        if ((pos[0]-goal[0])**2 + (pos[1]-goal[1])**2) < 0.001:
+            return [0, 0], 0
+            self.done = True
+        else:
+            self.done = False
         MAX_ACC = 1.5 * (1/30.0)
         pos_delta = np.array([goal[0]-pos[0], goal[1]-pos[1]])
         target_angle = math.atan2(pos_delta[1], pos_delta[0])
