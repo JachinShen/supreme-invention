@@ -90,24 +90,24 @@ class ActorCriticAgent():
         self.optimizer = optim.Adam(self.model.parameters(), lr=1e-5)
         self.memory = ReplayMemory(100000)
 
-        self.scale = 20.0
-        self.map_width = int(8*self.scale)
-        self.map_height = int(5*self.scale)
-        icra_map = Map(self.map_width, self.map_height)
-        grid = icra_map.getGrid()
-        self.obs_map = torch.from_numpy(1-grid)[MARGIN:-MARGIN, MARGIN:-MARGIN]
-        self.whole_map = torch.from_numpy(np.load("resources/ob.npy"))[
-            MARGIN:-MARGIN, MARGIN:-MARGIN]
+        #self.scale = 20.0
+        #self.map_width = int(8*self.scale)
+        #self.map_height = int(5*self.scale)
+        #icra_map = Map(self.map_width, self.map_height)
+        #grid = icra_map.getGrid()
+        #self.obs_map = torch.from_numpy(1-grid)[MARGIN:-MARGIN, MARGIN:-MARGIN]
+        #self.whole_map = torch.from_numpy(np.load("resources/ob.npy"))[
+            #MARGIN:-MARGIN, MARGIN:-MARGIN]
         #self.whole_map = torch.from_numpy(1-grid).to(device)
 
         # self.view_width, self.view_height = 0.8, 0.5 # m(half)
         #self.grid_width, self.grid_height = int(self.map_width*(self.view_width*2/8)), int(self.map_height*(self.view_height*2/5))
 
-        x, y = np.mgrid[0:5.0:5.0/100, 0:8.0:8.0/160]
-        pos = np.empty(x.shape + (2,))
-        pos[:, :, 0] = x
-        pos[:, :, 1] = y
-        self.pos = pos
+        #x, y = np.mgrid[0:5.0:5.0/100, 0:8.0:8.0/160]
+        #pos = np.empty(x.shape + (2,))
+        #pos[:, :, 0] = x
+        #pos[:, :, 1] = y
+        #self.pos = pos
         #rv = multivariate_normal([0.1, 0.1], [[0.01, 0.0], [0.0, 0.01]])
         #gaussian = torch.from_numpy(rv.pdf(pos)).to(device).double()
         #self.gaussian = gaussian.unsqueeze(0).unsqueeze(0).repeat(BATCH_SIZE,1,1,1)

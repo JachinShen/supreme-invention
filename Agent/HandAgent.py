@@ -6,10 +6,10 @@ import numpy as np
 import torch
 
 import cv2
-from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
-from SupportAlgorithm.MoveAction import MoveAction
+#from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
+#from SupportAlgorithm.MoveAction import MoveAction
 from SupportAlgorithm.NaiveMove import NaiveMove
-from util.Grid import Map
+#from util.Grid import Map
 
 class HandAgent():
     def __init__(self):
