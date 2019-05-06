@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-sys.path.append(".")
-
 from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
@@ -20,7 +18,7 @@ from SupportAlgorithm.NaiveMove import NaiveMove
 
 move = NaiveMove()
 
-TARGET_UPDATE = 100
+TARGET_UPDATE = 10
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -30,11 +28,11 @@ random.seed(seed)
 
 env = ICRAField()
 agent = ActorCriticAgent()
-agent.load_model()
+#agent.load_model()
 agent2 = HandAgent()
 episode_durations = []
 
-num_episodes = 1001
+num_episodes = 101
 losses = []
 rewards = []
 for i_episode in range(1, num_episodes):
@@ -44,7 +42,7 @@ for i_episode in range(1, num_episodes):
     pos = env.reset()
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
-    for t in tqdm(range(2*60*30)):
+    for t in (range(2*60*30)):
         # Other agent
         env.setRobotAction("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
@@ -88,15 +86,18 @@ for i_episode in range(1, num_episodes):
     agent.memory.finish_epoch()
     loss = agent.optimize_offline(1)
     #loss = agent.test_model()
-    #print("Test loss: {}".format(loss))
+    print("Train loss: {}".format(loss))
     losses.append(loss)
     rewards.append(env.reward)
     episode_durations.append(t + 1)
 
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
-        #agent.update_target_net()
+        agent.update_target_net()
         agent.save_model()
+        loss = agent.test_model()
+        print("Test loss: {}".format(loss))
+        #agent.decay_LR(0.8)
 
 print('Complete')
 plt.plot(losses)

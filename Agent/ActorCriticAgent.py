@@ -86,36 +86,14 @@ class ActorCriticAgent():
         # if gpu is to be used
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
-        self.model = ActorCritic().to(device).double()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-5)
+        self.policy_net = ActorCritic().to(device).double()
+        self.target_net = ActorCritic().to(device).double()
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.eval()
+
+        self.lr = 1e-5
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
         self.memory = ReplayMemory(100000)
-
-        #self.scale = 20.0
-        #self.map_width = int(8*self.scale)
-        #self.map_height = int(5*self.scale)
-        #icra_map = Map(self.map_width, self.map_height)
-        #grid = icra_map.getGrid()
-        #self.obs_map = torch.from_numpy(1-grid)[MARGIN:-MARGIN, MARGIN:-MARGIN]
-        #self.whole_map = torch.from_numpy(np.load("resources/ob.npy"))[
-            #MARGIN:-MARGIN, MARGIN:-MARGIN]
-        #self.whole_map = torch.from_numpy(1-grid).to(device)
-
-        # self.view_width, self.view_height = 0.8, 0.5 # m(half)
-        #self.grid_width, self.grid_height = int(self.map_width*(self.view_width*2/8)), int(self.map_height*(self.view_height*2/5))
-
-        #x, y = np.mgrid[0:5.0:5.0/100, 0:8.0:8.0/160]
-        #pos = np.empty(x.shape + (2,))
-        #pos[:, :, 0] = x
-        #pos[:, :, 1] = y
-        #self.pos = pos
-        #rv = multivariate_normal([0.1, 0.1], [[0.01, 0.0], [0.0, 0.01]])
-        #gaussian = torch.from_numpy(rv.pdf(pos)).to(device).double()
-        #self.gaussian = gaussian.unsqueeze(0).unsqueeze(0).repeat(BATCH_SIZE,1,1,1)
-        #self.gaussian = gaussian
-        #self.whole_rand = torch.rand(self.grid_height, self.grid_width).double().to(device)
-        #self.value_map = torch.zeros(1, 1, self.grid_height, self.grid_width).double().to(device)
-        #plt.imshow(self.gaussian, vmin=0, cmap="GnBu")
-        # plt.show()
 
     def perprocess_state(self, state):
         return torch.tensor([state]).double() # 1x2xseq
@@ -124,9 +102,9 @@ class ActorCriticAgent():
         device = self.device
 
         with torch.no_grad():
-            self.model.eval()
+            self.target_net.eval()
             state_map = state_map.to(device)
-            a, v = self.model(state_map)
+            a, v = self.target_net(state_map)
             #print(v)
         a = a.cpu().numpy()[0]
 
@@ -169,9 +147,9 @@ class ActorCriticAgent():
         reward_batch = reward_batch.to(device)
         next_state_batch = next_state_batch.to(device)
 
-        self.model.train()
+        self.policy_net.train()
         state_batch = Variable(state_batch, requires_grad=True)
-        a, value_eval = self.model(state_batch)  # batch, 1, 10, 16
+        a, value_eval = self.policy_net(state_batch)  # batch, 1, 10, 16
         ### Critic ###
         td_error = reward_batch - value_eval
         ### Actor ###
@@ -207,8 +185,8 @@ class ActorCriticAgent():
         next_state_batch = next_state_batch.to(device)
 
         with torch.no_grad():
-            self.model.eval()
-            a, value_eval = self.model(state_batch)  # batch, 1, 10, 16
+            self.target_net.eval()
+            a, value_eval = self.target_net(state_batch)  # batch, 1, 10, 16
             ### Critic ###
             td_error = reward_batch - value_eval
             ### Actor ###
@@ -221,13 +199,13 @@ class ActorCriticAgent():
         return loss.item()
 
     def save_model(self):
-        torch.save(self.model.state_dict(), "Actor.model")
+        torch.save(self.policy_net.state_dict(), "Actor.model")
 
     def save_memory(self, file_name):
         torch.save(self.memory, file_name)
 
     def load_model(self):
-        self.model.load_state_dict(torch.load(
+        self.policy_net.load_state_dict(torch.load(
             "Actor.model", map_location=self.device))
 
     def load_memory(self, file_name):
@@ -246,9 +224,16 @@ class ActorCriticAgent():
                                 shuffle=True, collate_fn=batch_state_map, num_workers=10, pin_memory=True)
         device = self.device
         for epoch in range(num_epoch):
-            print("Train epoch: [{}/{}]".format(epoch, num_epoch))
-            for data in tqdm(dataloader):
+            #print("Train epoch: [{}/{}]".format(epoch, num_epoch))
+            for data in (dataloader):
                 loss = self.optimize_once(data)
-            loss = self.test_model()
-            print("Test loss: {}".format(loss))
+            #loss = self.test_model()
+            #print("Test loss: {}".format(loss))
         return loss
+    
+    def decay_LR(self, decay):
+        self.lr *= decay
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
+        
+    def update_target_net(self):
+        self.target_net.load_state_dict(self.policy_net.state_dict())
