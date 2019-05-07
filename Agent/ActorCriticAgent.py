@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from Agent.Actor import ActorCritic
 from util.Grid import MARGIN, Map
+from SupportAlgorithm.DataStructure import Action, RobotState
 
 BATCH_SIZE = 2048
 GAMMA = 0.99
@@ -103,8 +104,8 @@ class ActorCriticAgent():
         ], lr=self.lr)
         self.memory = ReplayMemory(100000)
 
-    def perprocess_state(self, state):
-        return torch.tensor([state]).double() # 1x2xseq
+    def perprocess_state(self, state: RobotState):
+        return torch.tensor([state.scan]).double() # 1x2xseq
 
     def select_action(self, state_map, mode):
         device = self.device

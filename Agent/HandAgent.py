@@ -6,10 +6,8 @@ import numpy as np
 import torch
 
 import cv2
-#from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
-#from SupportAlgorithm.MoveAction import MoveAction
 from SupportAlgorithm.NaiveMove import NaiveMove
-#from util.Grid import Map
+from SupportAlgorithm.DataStructure import Action, RobotState
 
 class HandAgent():
     def __init__(self):
@@ -56,19 +54,16 @@ class HandAgent():
         self.target = self.avaiable_pos[self.index]
         pass
 
-    def select_action(self, state):
-        action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        pos = (state[0], state[1])
-        vel = (state[2], state[3])
-        angle = state[4]
-        if state[-1] > 0 and state[-3] > 0:
-            pass
-            action[4] = +1.0
-            #return action
-            #self.target = (state[-4], state[-3])
-            #self.move = MoveAction(self.target, pos, vel, angle)
+    def select_action(self, state: RobotState):
+        action = Action()
+        pos = state.pos
+        vel = state.velocity
+        angle = state.angle
+        if state.detect:
+            action.shoot = +1.0
         else:
-            action[4] = 0.0
+            action.shoot = 0.0
+
         if ((pos[0]-self.target[0])**2 + (pos[1]-self.target[1])**2 < 0.1):
             self.index = random.choice(self.connected[self.index])
             self.target = self.avaiable_pos[self.index]
@@ -77,12 +72,11 @@ class HandAgent():
             #self.target = self.path[self.index]
 
         v, omega = self.move.moveTo(pos, vel, angle, self.target)
-        action[0] = v[0]
-        action[1] = omega
-        action[2] = v[1]
+        action.v_t = v[0]
+        action.v_n = v[1]
+        action.omega = omega
         return action
 
-        return new_action
 
 '''
 class HandAgent():

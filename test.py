@@ -12,10 +12,13 @@ from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
+from SupportAlgorithm.DataStructure import Action, RobotState
 
 move = NaiveMove()
 
 TARGET_UPDATE = 10
+ID_R1 = 0
+ID_B1 = 1
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -34,47 +37,43 @@ num_episodes = 50
 for i_episode in range(num_episodes):
     print("Epoch: {}".format(i_episode))
     # Initialize the environment and state
-    action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    action = Action()
     pos = env.reset()
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         # Other agent
-        env.setRobotAction("robot_1", agent2.select_action(
-            env.getStateArray("robot_1")))
+        env.setRobotAction("robot_1", agent2.select_action(state[ID_B1]))
+
         # Select and perform an action
-        state = env.state_dict["robot_0"]["detect"]
-        state_map = agent.perprocess_state(state)
+        action = Action()
+        state_map = agent.perprocess_state(state[ID_R1])
         a_m, a_t = agent.select_action(state_map, "max_probability")
-        action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         if a_m == 0: # left
-            action[2] = -1.0
+            action.v_n = -1.0
         elif a_m == 1: # ahead
-            action[0] = +1.0
+            action.v_t = +1.0
         elif a_m == 2: # right
-            action[2] = +1.0
+            action.v_n = +1.0
 
         if a_t == 0: # left
-            pass
-            action[1] = +1.0
+            action.omega = +1.0
         elif a_t == 1: # stay
             pass
         elif a_t == 2: # right
-            action[1] = -1.0
-            pass
+            action.omega = -1.0
 
-        if env.state_dict["robot_0"]["robot_1"][0] > 0:
-            action[4] = +1.0
+        if state[ID_R1].detect:
+            action.shoot = +1.0
         else:
-            action[4] = 0.0
+            action.shoot = 0.0
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state = env.state_dict["robot_0"]["detect"]
-        next_state_map = agent.perprocess_state(next_state)
+        next_state_map = agent.perprocess_state(next_state[ID_R1])
 
         # Store the transition in memory
-        agent.push(state, next_state, [a_m, a_t], [reward])
+        agent.push(state_map, next_state_map, [a_m, a_t], [reward])
         state = next_state
         state_map = next_state_map
 

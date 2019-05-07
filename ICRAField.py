@@ -17,8 +17,7 @@ from Referee.ICRAContactListener import ICRAContactListener
 from Referee.ICRAMap import ICRAMap
 from Referee.SupplyArea import SupplyAreas
 from SupportAlgorithm.DetectCallback import detectCallback
-#from SupportAlgorithm.GlobalLocalPlanner import GlobalLocalPlanner
-from SupportAlgorithm.NaiveMove import NaiveMove
+from SupportAlgorithm.DataStructure import Action, RobotState
 
 STATE_W = 96   # less than Atari 160x192
 STATE_H = 96
@@ -45,23 +44,6 @@ def robotName2ID(robot_name):
         return ID_R1
     elif robot_name == "robot_1":
         return ID_B1
-
-class RobotState():
-    def __init__(self):
-        self.health = 2000
-        self.pos = [-1, -1]
-        self.angle = -1
-        self.velocity = [0, 0]
-        self.angular = 0
-        self.detect = False
-        self.scan = []
-
-class Action():
-    def __init__(self):
-        self.v_t = 0.0
-        self.v_n = 0.0
-        self.omega = 0.0
-        self.shoot = 0.0
 
 class ICRAField(gym.Env, EzPickle):
     metadata = {
@@ -212,8 +194,8 @@ class ICRAField(gym.Env, EzPickle):
                     # Auto shoot
                     self.robots[robot_name].setCloudTerrance(angle)
 
-        for robot_name in self.robots.keys():
-            if robot_name in detected.keys():
+        for robot in self.robots.keys():
+            if robot in detected.keys():
                 self.state[robotName2ID(robot_name)].detect = True
             else:
                 self.state[robotName2ID(robot_name)].detect = False
