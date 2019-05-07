@@ -136,7 +136,7 @@ class ActorCriticAgent():
         self.memory.push(state, action, next_state, reward)
 
     def make_state_map(self, state):
-        return torch.tensor(state).double() # batchx2xseq
+        return torch.cat(state, dim=0).double() # batchx2xseq
 
     def sample_memory(self, is_test=False):
         device = self.device

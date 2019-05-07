@@ -199,6 +199,7 @@ class ICRAField(gym.Env, EzPickle):
         for robot in self.robots.keys():
             if robot in detected.keys():
                 self.state[robot_name].detect = True
+                break
             else:
                 self.state[robot_name].detect = False
 

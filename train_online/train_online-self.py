@@ -32,8 +32,8 @@ random.seed(seed)
 
 env = ICRAField()
 agent = ActorCriticAgent()
-#agent.load_model()
-agent2 = HandAgent()
+agent2 = ActorCriticAgent()
+agent2.load_model()
 episode_durations = []
 
 num_episodes = 101
@@ -44,11 +44,10 @@ for i_episode in range(1, num_episodes):
     # Initialize the environment and state
     action = Action()
     pos = env.reset()
-    agent2.reset(pos)
     state, reward, done, info = env.step(action)
     for t in (range(2*60*30)):
         # Other agent
-        env.setRobotAction("robot_1", agent2.select_action(state["robot_1"]))
+        env.setRobotAction("robot_1", agent2.select_final_action(state["robot_1"], mode="max_probability"))
 
         # Select and perform an action
         action = Action()
@@ -74,6 +73,7 @@ for i_episode in range(1, num_episodes):
             action.shoot = 0.0
 
         # Step
+        #action = Action()
         next_state, reward, done, info = env.step(action)
         next_state_map = agent.perprocess_state(next_state["robot_0"])
 
@@ -82,7 +82,7 @@ for i_episode in range(1, num_episodes):
         state = next_state
         state_map = next_state_map
 
-        #env.render()
+        env.render()
         # Perform one step of the optimization (on the target network)
         if done:
             break
