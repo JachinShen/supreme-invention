@@ -85,7 +85,7 @@ for i_episode in range(1, num_episodes):
         state = next_state
         state_map = next_state_map
 
-        env.render()
+        #env.render()
         # Perform one step of the optimization (on the target network)
         if done:
             break
@@ -103,8 +103,8 @@ for i_episode in range(1, num_episodes):
     if i_episode % TARGET_UPDATE == 0:
         agent.update_target_net()
         agent.save_model()
-        loss = agent.test_model()
-        print("Test loss: {}".format(loss))
+        #loss = agent.test_model()
+        #print("Test loss: {}".format(loss))
         #agent.decay_LR(0.8)
 
 print('Complete')

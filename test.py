@@ -26,7 +26,7 @@ random.seed(seed)
 env = ICRAField()
 agent = ActorCriticAgent()
 agent2 = HandAgent()
-#agent.load_model()
+agent.load_model()
 device = agent.device
 episode_durations = []
 

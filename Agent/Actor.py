@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 class ActorCritic(nn.Module):
     def __init__(self):
         super(ActorCritic, self).__init__()
+        '''
         self.extractor = nn.Sequential(
             nn.Conv1d(2, 16, 6), # 135 -> 130
             nn.MaxPool1d(2, 2), # 65
@@ -26,6 +27,7 @@ class ActorCritic(nn.Module):
             nn.MaxPool1d(2, 2), # 2
             nn.ReLU(),
         )
+        '''
         self.fc = nn.Sequential(
             nn.Linear(135*2, 1024),
             nn.ReLU(),

@@ -91,7 +91,7 @@ class ActorCriticAgent():
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.lr = 1e-4
+        self.lr = 1e-5
         self.optimizer = optim.Adam([
             {"params": self.policy_net.head_a_m.parameters()},
             {"params": self.policy_net.head_a_t.parameters()},
@@ -124,10 +124,10 @@ class ActorCriticAgent():
             a_t = np.argmax(a_t)
         elif mode == "sample":
             #a_m += 0.01
-            #a_m /= a_m.sum()
+            a_m /= a_m.sum()
             a_m = np.random.choice(range(3),p=a_m)
             #a_t += 0.01
-            #a_t /= a_t.sum()
+            a_t /= a_t.sum()
             a_t = np.random.choice(range(3),p=a_t)
         return a_m, a_t
 
