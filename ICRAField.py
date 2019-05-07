@@ -49,13 +49,19 @@ def robot_str_2_id(robot_id):
 class RobotState():
     def __init__(self):
         self.health = 2000
-        self.bullets = 100
         self.pos = [-1, -1]
         self.angle = -1
         self.velocity = [0, 0]
         self.angular = 0
         self.detect = False
         self.scan = []
+
+class Action():
+    def __init__(self):
+        self.v_t = 0.0
+        self.v_n = 0.0
+        self.omega = 0.0
+        self.shoot = 0.0
 
 class ICRAField(gym.Env, EzPickle):
     metadata = {
@@ -172,17 +178,17 @@ class ICRAField(gym.Env, EzPickle):
 
     def stepAction(self, robot_name, action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
-        self.robots[robot_name].moveAheadBack(action[0])
-        self.robots[robot_name].turnLeftRight(action[1])
-        self.robots[robot_name].moveTransverse(action[2])
-        self.robots[robot_name].rotateCloudTerrance(action[3])
+        self.robots[robot_name].moveAheadBack(action.v_t)
+        self.robots[robot_name].turnLeftRight(action.omega)
+        self.robots[robot_name].moveTransverse(action.v_n)
+        #self.robots[robot_name].rotateCloudTerrance(action.)
         #print(int(self.t * FPS) % (60 * FPS))
         if int(self.t * FPS) % (60 * FPS) == 0:
             self.robots[robot_name].refreshReloadOppotunity()
-        if action[5] > 0.99:
-            self.robots[robot_name].addBullets()
-            action[5] = +0.0
-        if action[4] > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
+        #if action[5] > 0.99:
+            #self.robots[robot_name].addBullets()
+            #action[5] = +0.0
+        if action.shoot > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
             if(self.robots[robot_name].bullets_num > 0):
                 init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
                 self.bullets.shoot(init_angle, init_pos)
@@ -417,8 +423,9 @@ class ICRAField(gym.Env, EzPickle):
 if __name__ == "__main__":
     from pyglet.window import key, mouse
     # gas, rotate, transverse, rotate cloud terrance, shoot, reload
-    a = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    target = [0, 0]
+    #a = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    #target = [0, 0]
+    a = Action()
 
     def on_mouse_release(x, y, button, modifiers):
         x_low, x_high, y_low, y_high = 168, 1033, 249, 789
@@ -433,50 +440,22 @@ if __name__ == "__main__":
         global restart
         if k == key.ESCAPE:
             restart = True
-        if k == key.W:
-            a[0] = +1.0
-        if k == key.S:
-            a[0] = -1.0
-        if k == key.Q:
-            a[1] = +1.0
-        if k == key.E:
-            a[1] = -1.0
-        if k == key.D:
-            a[2] = +1.0
-        if k == key.A:
-            a[2] = -1.0
-        if k == key.Z:
-            a[3] = +1.0
-        if k == key.C:
-            a[3] = -1.0
-        if k == key.SPACE:
-            a[4] = +1.0
-        if k == key.R:
-            a[5] = +1.0
+        if k == key.W: a.v_t = +1.0
+        if k == key.S: a.v_t = -1.0
+        if k == key.Q: a.omega = +1.0
+        if k == key.E: a.omega = -1.0
+        if k == key.D: a.v_n = +1.0
+        if k == key.A: a.v_n = -1.0
+        if k == key.SPACE: a.shoot = +1.0
 
     def key_release(k, mod):
-        if k == key.ESCAPE:
-            restart = True
-        if k == key.W:
-            a[0] = +0.0
-        if k == key.S:
-            a[0] = -0.0
-        if k == key.Q:
-            a[1] = +0.0
-        if k == key.E:
-            a[1] = -0.0
-        if k == key.D:
-            a[2] = +0.0
-        if k == key.A:
-            a[2] = -0.0
-        if k == key.Z:
-            a[3] = +0.0
-        if k == key.C:
-            a[3] = -0.0
-        if k == key.SPACE:
-            a[4] = +0.0
-        if k == key.R:
-            a[5] = +0.0
+        if k == key.W: a.v_t = +0.0
+        if k == key.S: a.v_t = -0.0
+        if k == key.Q: a.omega = +0.0
+        if k == key.E: a.omega = -0.0
+        if k == key.D: a.v_n = +0.0
+        if k == key.A: a.v_n = -0.0
+        if k == key.SPACE: a.shoot = +0.0
 
     env = ICRAField()
     env.render()
