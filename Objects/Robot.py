@@ -69,7 +69,7 @@ class Robot:
                 fixtures=fixtureDef(
                     shape=polygonShape(
                         vertices=[(x*front_k*SIZE, y*front_k*SIZE) for x, y in WHEEL_POLY]),
-                    density=1e-6, restitution=1, userData=userData + "_wheel", friction=1)
+                    density=1.0, restitution=1, userData=userData + "_wheel", friction=1)
             )
             rjd = revoluteJointDef(
                 bodyA=self.hull,

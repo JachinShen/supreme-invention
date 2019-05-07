@@ -8,6 +8,7 @@ class ICRAContactListener(contactListener):
         self.collision_bullet_robot = []
         self.collision_bullet_wall = []
         self.collision_robot_wall = []
+        self.collision_robot_robot = []
 
     def BeginContact(self, contact):
         pass
@@ -35,6 +36,9 @@ class ICRAContactListener(contactListener):
             self.collision_robot_wall.append(u1)
         if u2_type == "robot" and u1_type == "wall":
             self.collision_robot_wall.append(u2)
+        if u1_type == "robot" and u2_type == "robot":
+            self.collision_robot_robot.append(u1)
+            self.collision_robot_robot.append(u2)
 
     def PostSolve(self, contact, impulse):
         pass
@@ -43,3 +47,4 @@ class ICRAContactListener(contactListener):
         self.collision_bullet_robot = []
         self.collision_bullet_wall = []
         self.collision_robot_wall = []
+        self.collision_robot_robot = []

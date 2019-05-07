@@ -147,6 +147,7 @@ class ICRAField(gym.Env, EzPickle):
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
         collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
         collision_robot_wall = self.contactListener_keepref.collision_robot_wall
+        collision_robot_robot = self.contactListener_keepref.collision_robot_robot
         for bullet, robot in collision_bullet_robot:
             self.bullets.destroyById(bullet)
             if(self.robots[robot].buffLeftTime) > 0:
@@ -158,6 +159,8 @@ class ICRAField(gym.Env, EzPickle):
         for robot in collision_robot_wall:
             pass
             #self.robots[robot].loseHealth(2000)
+        for robot in collision_robot_robot:
+            self.robots[robot].loseHealth(10)
         self.contactListener_keepref.clean()
 
     def stepAction(self, robot_name, action: Action):
