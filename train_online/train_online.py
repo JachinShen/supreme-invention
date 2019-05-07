@@ -3,6 +3,7 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import random
 import sys
+import time
 from collections import namedtuple
 from itertools import count
 from tqdm import tqdm
@@ -51,7 +52,7 @@ for i_episode in range(1, num_episodes):
         # Select and perform an action
         state = env.state_dict["robot_0"]["detect"]
         state_map = agent.perprocess_state(state)
-        a_m, a_t = agent.select_action(state_map, "sample")
+        a_m, a_t = agent.select_action(state_map, "max_probability")
         action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         if a_m == 0: # left
             action[2] = -1.0
@@ -61,10 +62,12 @@ for i_episode in range(1, num_episodes):
             action[2] = +1.0
 
         if a_t == 0: # left
-            action[1] = -1.0
-        elif a_t == 1: # right
+            pass
             action[1] = +1.0
-        elif a_t == 2:
+        elif a_t == 1: # stay
+            pass
+        elif a_t == 2: # right
+            action[1] = -1.0
             pass
 
         if env.state_dict["robot_0"]["robot_1"][0] > 0:
@@ -82,6 +85,7 @@ for i_episode in range(1, num_episodes):
         state = next_state
         state_map = next_state_map
 
+        env.render()
         # Perform one step of the optimization (on the target network)
         if done:
             break

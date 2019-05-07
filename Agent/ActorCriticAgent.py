@@ -91,8 +91,16 @@ class ActorCriticAgent():
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.lr = 1e-5
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
+        self.lr = 1e-4
+        self.optimizer = optim.Adam([
+            {"params": self.policy_net.head_a_m.parameters()},
+            {"params": self.policy_net.head_a_t.parameters()},
+            {"params": self.policy_net.fc.parameters()},
+        ], lr=self.lr)
+        self.optimizer2 = optim.Adam([
+            {"params": self.policy_net.head_v.parameters()},
+            {"params": self.policy_net.fc.parameters()},
+        ], lr=self.lr)
         self.memory = ReplayMemory(100000)
 
     def perprocess_state(self, state):
@@ -106,8 +114,7 @@ class ActorCriticAgent():
             state_map = state_map.to(device)
             a_m, a_t, v = self.target_net(state_map)
         a_m = a_m.cpu().numpy()[0] # left, ahead, right
-        a_t = a_t.cpu().numpy()[0] # turn left, right, stay
-        distance = state_map[0][0].numpy()
+        a_t = a_t.cpu().numpy()[0] # turn left, stay, right
         #plt.plot(distance)
         #plt.show()
         #plt.pause(0.0001)
@@ -160,6 +167,10 @@ class ActorCriticAgent():
         a_m, a_t, value_eval = self.policy_net(state_batch)  # batch, 1, 10, 16
         ### Critic ###
         td_error = reward_batch - value_eval
+        loss = nn.MSELoss()(value_eval, reward_batch)
+        self.optimizer2.zero_grad()
+        loss.backward(retain_graph=True)
+        self.optimizer2.step()
         ### Actor ###
         #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
         prob_m = a_m.gather(1, action_batch[:,0:1].long())
@@ -204,7 +215,7 @@ class ActorCriticAgent():
             prob_t = a_t.gather(1, action_batch[:,1:2].long())
             log_prob = torch.log(prob_m * prob_t + 1e-6)
             exp_v = torch.mean(log_prob * td_error.detach())
-            loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
+            loss = -exp_v
 
         return loss.item()
 

@@ -47,17 +47,24 @@ class ActorCritic(nn.Module):
     def forward(self, s):
         #h = self.extractor(s)
         h = s
-        shortcut = torch.stack([
-            torch.mean(s[:,0,135//2+45//2:], dim=1), 
-            torch.mean(s[:,0,135//2-45//2:135//2+45//2], dim=1), 
-            torch.mean(s[:,0,:135//2-45//2], dim=1)], dim=1) # batch, 3
-        shortcut = F.softmax(shortcut, dim=1)
+        wall = torch.stack([
+            torch.min(s[:,0,135//2+45//2:], dim=1)[0], 
+            torch.min(s[:,0,135//2-45//2:135//2+45//2], dim=1)[0], 
+            torch.min(s[:,0,:135//2-45//2], dim=1)[0]
+            ], dim=1) # batch, 3
+        wall = F.softmax(wall, dim=1)
+        enemy = torch.stack([
+            torch.mean(s[:,1,135//2+45//2:], dim=1), 
+            torch.mean(s[:,1,135//2-45//2:135//2+45//2], dim=1), 
+            torch.mean(s[:,1,:135//2-45//2], dim=1)], dim=1) # batch, 3
+        enemy = F.softmax(enemy, dim=1)
         #print(h.shape)
         batch, channel, seq = h.shape
         h = h.reshape([batch, -1])
         head = self.fc(h)
         a_m, a_t, v = self.head_a_m(head), self.head_a_t(head), self.head_v(head)
-        a_m = F.softmax(a_m + shortcut, dim=1)
+        a_m = F.softmax(a_m + wall + enemy, dim=1)
+        a_t = F.softmax(a_t + enemy, dim=1)
         return a_m, a_t, v
 
 if __name__=="__main__":

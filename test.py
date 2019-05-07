@@ -55,10 +55,12 @@ for i_episode in range(num_episodes):
             action[2] = +1.0
 
         if a_t == 0: # left
-            action[1] = -1.0
-        elif a_t == 1: # right
-            action[1] = +1.0
-        elif a_t == 2:
+            pass
+            action[1] = +0.4
+        elif a_t == 1: # stay
+            pass
+        elif a_t == 2: # right
+            action[1] = -0.4
             pass
 
         if env.state_dict["robot_0"]["robot_1"][0] > 0:
