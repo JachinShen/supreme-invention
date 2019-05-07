@@ -259,3 +259,50 @@ class ActorCriticAgent():
         
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def select_final_action(self, state, mode):
+        device = self.device
+        state_map = self.perprocess_state(state)
+
+        with torch.no_grad():
+            self.target_net.eval()
+            state_map = state_map.to(device)
+            a_m, a_t, v = self.target_net(state_map)
+        a_m = a_m.cpu().numpy()[0] # left, ahead, right
+        a_t = a_t.cpu().numpy()[0] # turn left, stay, right
+        #plt.plot(distance)
+        #plt.show()
+        #plt.pause(0.0001)
+
+        if mode == "max_probability":
+            a_m = np.argmax(a_m)
+            a_t = np.argmax(a_t)
+        elif mode == "sample":
+            #a_m += 0.01
+            a_m /= a_m.sum()
+            a_m = np.random.choice(range(3),p=a_m)
+            #a_t += 0.01
+            a_t /= a_t.sum()
+            a_t = np.random.choice(range(3),p=a_t)
+
+        action = Action()
+        if a_m == 0: # left
+            action.v_n = -1.0
+        elif a_m == 1: # ahead
+            action.v_t = +1.0
+        elif a_m == 2: # right
+            action.v_n = +1.0
+
+        if a_t == 0: # left
+            action.omega = +1.0
+        elif a_t == 1: # stay
+            pass
+        elif a_t == 2: # right
+            action.omega = -1.0
+
+        if state.detect:
+            action.shoot = +1.0
+        else:
+            action.shoot = 0.0
+
+        return action
