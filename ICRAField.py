@@ -37,10 +37,28 @@ SCAN_RANGE = 5
 COLOR_RED = (0.8, 0.0, 0.0)
 COLOR_BLUE = (0.0, 0.0, 0.8)
 
+ID_R1 = 0
+ID_B1 = 1
+
+def robot_str_2_id(robot_id):
+    if robot_id == "robot_0":
+        return ID_R1
+    elif robot_id == "robot_1":
+        return ID_B1
+
+class RobotState():
+    def __init__(self):
+        self.health = 2000
+        self.bullets = 100
+        self.pos = [-1, -1]
+        self.angle = -1
+        self.velocity = [0, 0]
+        self.angular = 0
+        self.detect = False
+        self.scan = []
 
 class ICRAField(gym.Env, EzPickle):
     metadata = {
-        # 'render.modes': ['human', 'rgb_array', 'state_pixels'],
         'render.modes': 'human',
         'video.frames_per_second': FPS
     }
@@ -52,8 +70,8 @@ class ICRAField(gym.Env, EzPickle):
         self.world = Box2D.b2World(
             (0, 0), contactListener=self.contactListener_keepref)
         self.viewer = None
-        self.invisible_state_window = None
-        self.invisible_video_window = None
+        #self.invisible_state_window = None
+        #self.invisible_video_window = None
         self.robots = {}
         self.map = None
         self.buff_areas = None
@@ -63,7 +81,6 @@ class ICRAField(gym.Env, EzPickle):
 
         self.reward = 0.0
         self.prev_reward = 0.0
-        self.state_dict = {}
         self.actions = {}
 
     def seed(self, seed=None):
@@ -126,33 +143,15 @@ class ICRAField(gym.Env, EzPickle):
         self.bullets = Bullet(self.world)
         self.buff_areas = AllBuffArea()
         self.supply_areas = SupplyAreas()
+        
+        self.state = [RobotState(), RobotState()]
 
-        self.state_dict["robot_0"] = {
-            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
-            "robot_0": (-1, -1), "robot_1": (-1, -1), "detect": [],
-        }
-        self.state_dict["robot_1"] = {
-            "pos": (-1, -1), "angle": -1, "health": -1, "velocity": (0, 0), "angular": 0,
-            "robot_0": (-1, -1), "robot_1": (-1, -1),
-        }
         self.actions["robot_0"] = None
         self.actions["robot_1"] = None
         self.reward = 0
 
         return init_pos_1
         # return self.step(None)[0]
-
-    def getStateArray(self, robot_id):
-        robot_state = self.state_dict[robot_id]
-        pos = robot_state["pos"]
-        velocity = robot_state["velocity"]
-        angle = robot_state["angle"]
-        angular = robot_state["angular"]
-        health = robot_state["health"]
-        robot_0 = robot_state["robot_0"]
-        robot_1 = robot_state["robot_1"]
-        return [pos[0], pos[1], velocity[0], velocity[1], angle, angular,
-                robot_0[0], robot_0[1], robot_1[0], robot_1[1]]
 
     def stepCollision(self):
         collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
@@ -210,11 +209,10 @@ class ICRAField(gym.Env, EzPickle):
                     self.robots[robot_id].setCloudTerrance(angle)
 
         for robot_name in self.robots.keys():
-            self.state_dict[robot_id][robot_name] = detected[robot_name] if robot_name in detected.keys(
-            ) else (-1, -1)
-
-        if robot_id != "robot_0":
-            return
+            if robot_name in detected.keys():
+                self.state[robot_str_2_id(robot_id)].detect = True
+            else:
+                self.state[robot_str_2_id(robot_id)].detect = False
 
         scan_distance, scan_type = [], []
         for i in range(-135, 135, 2):
@@ -230,15 +228,15 @@ class ICRAField(gym.Env, EzPickle):
                 scan_type.append(1)
             else:
                 scan_type.append(0)
-        self.state_dict["robot_0"]["detect"] = [scan_distance, scan_type]
+        self.state[robot_str_2_id(robot_id)].scan = [scan_distance, scan_type]
 
     def updateRobotState(self, robot_id):
-        self.state_dict[robot_id][robot_id] = self.robots[robot_id].getPos()
-        self.state_dict[robot_id]["health"] = self.robots[robot_id].health
-        self.state_dict[robot_id]["pos"] = self.robots[robot_id].getPos()
-        self.state_dict[robot_id]["angle"] = self.robots[robot_id].getAngle()
-        self.state_dict[robot_id]["velocity"] = self.robots[robot_id].getVelocity()
-        self.state_dict[robot_id]["angular"] = self.robots[robot_id].hull.angularVelocity
+        index = robot_str_2_id(robot_id)
+        self.state[index].pos = self.robots[robot_id].getPos()
+        self.state[index].health = self.robots[robot_id].health
+        self.state[index].angle = self.robots[robot_id].getAngle()
+        self.state[index].velocity = self.robots[robot_id].getVelocity()
+        self.state[index].angular = self.robots[robot_id].hull.angularVelocity
 
     def setRobotAction(self, robot_id, action):
         self.actions[robot_id] = action
@@ -279,7 +277,7 @@ class ICRAField(gym.Env, EzPickle):
 
             #self.reward += 10 * self.t * FPS
             step_reward = self.reward - self.prev_reward
-            if self.state_dict["robot_0"]["robot_1"][0] > 0:
+            if self.state[ID_R1].detect:
                 step_reward += 1/3000
             #if self.actions["robot_0"][0] == 0 and self.actions["robot_0"][2] == 0:
                 #step_reward -= 0.0002
@@ -293,7 +291,7 @@ class ICRAField(gym.Env, EzPickle):
             #self.reward += step_reward
             self.prev_reward = self.reward
 
-        return self.getStateArray("robot_0"), step_reward, done, {}
+        return self.state, step_reward, done, {}
 
     def render(self, mode='god'):
         if self.viewer is None:
@@ -347,8 +345,7 @@ class ICRAField(gym.Env, EzPickle):
                 self.robots[robot_name].draw(self.viewer)
         elif mode == "fps":
             self.robots["robot_0"].draw(self.viewer)
-            if self.state_dict["robot_0"]["robot_1"][0] >= 0:
-                self.robots["robot_1"].draw(self.viewer)
+            self.robots["robot_1"].draw(self.viewer)
         self.bullets.draw(self.viewer)
 
         arr = None
@@ -496,28 +493,14 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         s, r, done, info = env.step(a)
-        pos = (s[0], s[1])
-        vel = (s[2], s[3])
-        ang = s[4]
-        target[0] = s[0]
-        target[1] = s[1]
         while True:
             s, r, done, info = env.step(a)
-            pos = (s[0], s[1])
-            vel = (s[2], s[3])
-            angle = s[4]
-            angular = env.state_dict["robot_0"]["angular"]
-            #v, omega = move.moveTo(pos, vel, angle, target)
-            #a[0] = v[0]
-            #a[1] = omega * 3
-            #a[2] = v[1]
             total_reward += r
 
             if steps % 200 == 0 or done:
-                #     print("state: {}".format(s))
-                #     print("action " + str(["{:+0.2f}".format(x) for x in a]))
                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
             steps += 1
+
             # Faster, but you can as well call env.render() every time to play full window.
             if not record_video:
                 env.render()
