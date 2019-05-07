@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+sys.path.append(".")
+
 from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
@@ -49,20 +51,22 @@ for i_episode in range(1, num_episodes):
         # Select and perform an action
         state = env.state_dict["robot_0"]["detect"]
         state_map = agent.perprocess_state(state)
-        a = agent.select_action(state_map, "sample")
+        a_m, a_t = agent.select_action(state_map, "sample")
         action = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        if a == 0:
-            action[0] = +1.0
-        elif a == 1:
-            action[0] = -1.0
-        elif a == 2:
-            action[1] = +1.0
-        elif a == 3:
-            action[1] = -1.0
-        elif a == 4:
-            action[2] = +1.0
-        elif a == 5:
+        if a_m == 0: # left
             action[2] = -1.0
+        elif a_m == 1: # ahead
+            action[0] = +1.0
+        elif a_m == 2: # right
+            action[2] = +1.0
+
+        if a_t == 0: # left
+            action[1] = -1.0
+        elif a_t == 1: # right
+            action[1] = +1.0
+        elif a_t == 2:
+            pass
+
         if env.state_dict["robot_0"]["robot_1"][0] > 0:
             action[4] = +1.0
         else:
@@ -74,7 +78,7 @@ for i_episode in range(1, num_episodes):
         next_state_map = agent.perprocess_state(next_state)
 
         # Store the transition in memory
-        agent.push(state, next_state, [a], [reward])
+        agent.push(state, next_state, [a_m, a_t], [reward])
         state = next_state
         state_map = next_state_map
 
@@ -86,7 +90,7 @@ for i_episode in range(1, num_episodes):
     agent.memory.finish_epoch()
     loss = agent.optimize_offline(1)
     #loss = agent.test_model()
-    print("Train loss: {}".format(loss))
+    #print("Train loss: {}".format(loss))
     losses.append(loss)
     rewards.append(env.reward)
     episode_durations.append(t + 1)

@@ -104,17 +104,25 @@ class ActorCriticAgent():
         with torch.no_grad():
             self.target_net.eval()
             state_map = state_map.to(device)
-            a, v = self.target_net(state_map)
-            #print(v)
-        a = a.cpu().numpy()[0]
+            a_m, a_t, v = self.target_net(state_map)
+        a_m = a_m.cpu().numpy()[0] # left, ahead, right
+        a_t = a_t.cpu().numpy()[0] # turn left, right, stay
+        distance = state_map[0][0].numpy()
+        #plt.plot(distance)
+        #plt.show()
+        #plt.pause(0.0001)
 
         if mode == "max_probability":
-            a = np.argmax(a)
+            a_m = np.argmax(a_m)
+            a_t = np.argmax(a_t)
         elif mode == "sample":
-            a += 0.01
-            a /= a.sum()
-            a = np.random.choice(range(6),p=a)
-        return a
+            #a_m += 0.01
+            #a_m /= a_m.sum()
+            a_m = np.random.choice(range(3),p=a_m)
+            #a_t += 0.01
+            #a_t /= a_t.sum()
+            a_t = np.random.choice(range(3),p=a_t)
+        return a_m, a_t
 
     def push(self, state, next_state, action, reward):
         self.memory.push(state, action, next_state, reward)
@@ -149,13 +157,14 @@ class ActorCriticAgent():
 
         self.policy_net.train()
         state_batch = Variable(state_batch, requires_grad=True)
-        a, value_eval = self.policy_net(state_batch)  # batch, 1, 10, 16
+        a_m, a_t, value_eval = self.policy_net(state_batch)  # batch, 1, 10, 16
         ### Critic ###
         td_error = reward_batch - value_eval
         ### Actor ###
         #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-        prob = a.gather(1, action_batch.long())
-        log_prob = torch.log(prob + 1e-6)
+        prob_m = a_m.gather(1, action_batch[:,0:1].long())
+        prob_t = a_t.gather(1, action_batch[:,1:2].long())
+        log_prob = torch.log(prob_m * prob_t + 1e-6)
         exp_v = torch.mean(log_prob * td_error.detach())
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
         self.optimizer.zero_grad()
@@ -186,13 +195,14 @@ class ActorCriticAgent():
 
         with torch.no_grad():
             self.target_net.eval()
-            a, value_eval = self.target_net(state_batch)  # batch, 1, 10, 16
+            a_m, a_t, value_eval = self.target_net(state_batch)  # batch, 1, 10, 16
             ### Critic ###
             td_error = reward_batch - value_eval
             ### Actor ###
             #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-            prob = a.gather(1, action_batch.long())
-            log_prob = torch.log(prob)
+            prob_m = a_m.gather(1, action_batch[:,0:1].long())
+            prob_t = a_t.gather(1, action_batch[:,1:2].long())
+            log_prob = torch.log(prob_m * prob_t + 1e-6)
             exp_v = torch.mean(log_prob * td_error.detach())
             loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
 

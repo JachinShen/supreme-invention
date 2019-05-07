@@ -220,7 +220,7 @@ class ICRAField(gym.Env, EzPickle):
         for i in range(-135, 135, 2):
             angle, pos = self.robots[robot_id].getAnglePos()
             angle += i/180*math.pi
-            p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
+            p1 = (pos[0] + 0.3*math.cos(angle), pos[1] + 0.3*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
                   pos[1] + SCAN_RANGE*math.sin(angle))
             self.world.RayCast(self.detect_callback, p1, p2)

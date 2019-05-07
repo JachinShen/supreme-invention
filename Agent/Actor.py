@@ -27,27 +27,38 @@ class ActorCritic(nn.Module):
             nn.ReLU(),
         )
         self.fc = nn.Sequential(
-            nn.Linear(512*2, 256),
+            nn.Linear(135*2, 1024),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(1024, 256),
             nn.ReLU(),
         )
-        self.head_a = nn.Sequential(
-            nn.Linear(128, 6), # 8x4
+        self.head_a_m = nn.Sequential(
+            nn.Linear(256, 3), # 8x4
+            nn.Softmax(dim=1),
+        )
+        self.head_a_t = nn.Sequential(
+            nn.Linear(256, 3), # 8x4
             nn.Softmax(dim=1),
         )
         self.head_v = nn.Sequential(
-            nn.Linear(128, 1),
+            nn.Linear(256, 1),
         )
 
     def forward(self, s):
-        h = self.extractor(s)
+        #h = self.extractor(s)
+        h = s
+        shortcut = torch.stack([
+            torch.mean(s[:,0,135//2+45//2:], dim=1), 
+            torch.mean(s[:,0,135//2-45//2:135//2+45//2], dim=1), 
+            torch.mean(s[:,0,:135//2-45//2], dim=1)], dim=1) # batch, 3
+        shortcut = F.softmax(shortcut, dim=1)
         #print(h.shape)
         batch, channel, seq = h.shape
         h = h.reshape([batch, -1])
         head = self.fc(h)
-        a, v = self.head_a(head), self.head_v(head)
-        return a, v
+        a_m, a_t, v = self.head_a_m(head), self.head_a_t(head), self.head_v(head)
+        a_m = F.softmax(a_m + shortcut, dim=1)
+        return a_m, a_t, v
 
 if __name__=="__main__":
     x = torch.rand([1,2,135])
