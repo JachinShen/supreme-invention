@@ -70,6 +70,7 @@ class ICRAField(gym.Env, EzPickle):
         self.reward = 0.0
         self.prev_reward = 0.0
         self.actions = {}
+        self.state = {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -132,7 +133,8 @@ class ICRAField(gym.Env, EzPickle):
         self.buff_areas = AllBuffArea()
         self.supply_areas = SupplyAreas()
         
-        self.state = [RobotState(), RobotState()]
+        self.state["robot_0"] = RobotState()
+        self.state["robot_1"] = RobotState()
 
         self.actions["robot_0"] = None
         self.actions["robot_1"] = None
@@ -196,9 +198,9 @@ class ICRAField(gym.Env, EzPickle):
 
         for robot in self.robots.keys():
             if robot in detected.keys():
-                self.state[robotName2ID(robot_name)].detect = True
+                self.state[robot_name].detect = True
             else:
-                self.state[robotName2ID(robot_name)].detect = False
+                self.state[robot_name].detect = False
 
         scan_distance, scan_type = [], []
         for i in range(-135, 135, 2):
@@ -214,15 +216,14 @@ class ICRAField(gym.Env, EzPickle):
                 scan_type.append(1)
             else:
                 scan_type.append(0)
-        self.state[robotName2ID(robot_name)].scan = [scan_distance, scan_type]
+        self.state[robot_name].scan = [scan_distance, scan_type]
 
     def updateRobotState(self, robot_name):
-        index = robotName2ID(robot_name)
-        self.state[index].pos = self.robots[robot_name].getPos()
-        self.state[index].health = self.robots[robot_name].health
-        self.state[index].angle = self.robots[robot_name].getAngle()
-        self.state[index].velocity = self.robots[robot_name].getVelocity()
-        self.state[index].angular = self.robots[robot_name].hull.angularVelocity
+        self.state[robot_name].pos = self.robots[robot_name].getPos()
+        self.state[robot_name].health = self.robots[robot_name].health
+        self.state[robot_name].angle = self.robots[robot_name].getAngle()
+        self.state[robot_name].velocity = self.robots[robot_name].getVelocity()
+        self.state[robot_name].angular = self.robots[robot_name].hull.angularVelocity
 
     def setRobotAction(self, robot_name, action):
         self.actions[robot_name] = action
@@ -258,7 +259,7 @@ class ICRAField(gym.Env, EzPickle):
 
             #self.reward += 10 * self.t * FPS
             step_reward = self.reward - self.prev_reward
-            if self.state[ID_R1].detect:
+            if self.state["robot_0"].detect:
                 step_reward += 1/3000
 
             if self.robots["robot_0"].health <= 0:
