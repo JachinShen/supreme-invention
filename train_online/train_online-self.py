@@ -47,7 +47,7 @@ for i_episode in range(1, num_episodes):
     state, reward, done, info = env.step(action)
     for t in (range(2*60*30)):
         # Other agent
-        env.setRobotAction("robot_1", agent2.select_final_action(state["robot_1"], mode="max_probability"))
+        env.set_robot_action("robot_1", agent2.select_final_action(state["robot_1"], mode="max_probability"))
 
         # Select and perform an action
         action = Action()

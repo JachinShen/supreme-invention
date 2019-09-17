@@ -45,7 +45,7 @@ for i_episode in range(1, num_episodes):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
         # Other agent
-        env.setRobotAction("robot_1", agent2.select_action(
+        env.set_robot_action("robot_1", agent2.select_action(
             env.getStateArray("robot_1")))
         # Select and perform an action
         goal = agent.select_action(state_map)

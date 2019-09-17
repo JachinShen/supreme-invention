@@ -43,7 +43,7 @@ for i_episode in range(num_episodes):
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         # Other agent
-        env.setRobotAction("robot_1", agent2.select_action(state["robot_1"]))
+        env.set_robot_action("robot_1", agent2.select_action(state["robot_1"]))
 
         # Select and perform an action
         action = Action()

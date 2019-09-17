@@ -19,10 +19,6 @@ from Referee.SupplyArea import SupplyAreas
 from SupportAlgorithm.DetectCallback import detectCallback
 from SupportAlgorithm.DataStructure import Action, RobotState
 
-STATE_W = 96   # less than Atari 160x192
-STATE_H = 96
-VIDEO_W = 600
-VIDEO_H = 400
 WINDOW_W = 1200
 WINDOW_H = 1000
 
@@ -30,14 +26,14 @@ SCALE = 40.0        # Track scale
 PLAYFIELD = 400/SCALE  # Game over boundary
 FPS = 30
 ZOOM = 2.7        # Camera zoom
-ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
 
-SCAN_RANGE = 5
+SCAN_RANGE = 5  # m
 COLOR_RED = (0.8, 0.0, 0.0)
 COLOR_BLUE = (0.0, 0.0, 0.8)
 
 ID_R1 = 0
 ID_B1 = 1
+
 
 def robotName2ID(robot_name):
     if robot_name == "robot_0":
@@ -45,27 +41,42 @@ def robotName2ID(robot_name):
     elif robot_name == "robot_1":
         return ID_B1
 
+
 class ICRAField(gym.Env, EzPickle):
-    metadata = {
-        'render.modes': 'human',
-        'video.frames_per_second': FPS
-    }
+
+    __pos_safe = [
+        [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5],  # 0 1 2 3
+        [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
+        [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5],  # 7 8 9 10
+        [4.0, 1.75], [4.0, 3.25],                         # 11 12
+        [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5],  # 13 14 15 16
+        [6.5, 0.5], [6.5, 2.0], [6.5, 4.5],             # 17 18 19
+        [7.5, 0.5], [7.5, 2.0], [7.5, 3.0], [7.5, 4.5]  # 20 21 22 23
+    ]
+    __id_pos_linked = [
+        [1, 2, 3, 4], [0, 2, 3], [0, 1, 3, 5], [0, 1, 2, 6],
+        [0, 7], [2, 9], [3, 10],
+        [8, 9, 10, 4], [7, 9, 10, 11], [7, 8, 10, 5, 12], [7, 8, 9],
+        [8, 14], [9, 15],
+        [14, 15, 16, 17], [13, 15, 16, 18, 11, 11, 11, 11, 11], [
+            13, 14, 16, 12, 12, 12, 12, 12], [13, 14, 15, 19],
+        [13, 20], [14, 21], [16, 23],
+        [21, 22, 23, 17], [20, 22, 23, 18], [20, 21, 23], [20, 21, 22, 19]
+    ]
 
     def __init__(self):
         EzPickle.__init__(self)
         self.seed()
-        self.contactListener_keepref = ICRAContactListener(self)
-        self.world = Box2D.b2World(
-            (0, 0), contactListener=self.contactListener_keepref)
-        self.viewer = None
-        #self.invisible_state_window = None
-        #self.invisible_video_window = None
-        self.robots = {}
-        self.map = None
-        self.buff_areas = None
-        self.bullets = None
-        self.supply_areas = None
-        self.detect_callback = detectCallback()
+        self.__contactListener_keepref = ICRAContactListener(self)
+        self.__world = Box2D.b2World(
+            (0, 0), contactListener=self.__contactListener_keepref)
+        self.__viewer = None
+        self.__robots = {}
+        self.__obstacle = None
+        self.__area_buff = None
+        self.__projectile = None
+        self.__area_supply = None
+        self.__callback_autoaim = detectCallback()
 
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -77,62 +88,42 @@ class ICRAField(gym.Env, EzPickle):
         return [seed]
 
     def _destroy(self):
-        for robot_name in self.robots.keys():
-            self.robots[robot_name].destroy()
-        self.robots = {}
-        if self.map:
-            self.map.destroy()
-        self.map = None
-        if self.bullets:
-            self.bullets.destroy()
-        self.bullets = None
+        for robot_name in self.__robots.keys():
+            self.__robots[robot_name].destroy()
+        self.__robots = {}
+        if self.__obstacle:
+            self.__obstacle.destroy()
+        self.__obstacle = None
+        if self.__projectile:
+            self.__projectile.destroy()
+        self.__projectile = None
 
     def reset(self):
         self._destroy()
         self.reward = 0.0
         self.prev_reward = 0.0
         self.t = 0.0
-        self.human_render = False
 
-        self.robots = {}
+        self.__robots = {}
 
-        avaiable_pos = [
-            [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5],  # 0 1 2 3
-            [1.5, 0.5], [1.5, 3.0], [1.5, 4.5],             # 4 5 6
-            [2.75, 0.5], [2.75, 2.0], [2.75, 3.0], [2.75, 4.5],  # 7 8 9 10
-            [4.0, 1.75], [4.0, 3.25],                         # 11 12
-            [5.25, 0.5], [5.25, 2.0], [5.25, 3.0], [5.25, 4.5],  # 13 14 15 16
-            [6.5, 0.5], [6.5, 2.0], [6.5, 4.5],             # 17 18 19
-            [7.5, 0.5], [7.5, 2.0], [7.5, 3.0], [7.5, 4.5]  # 20 21 22 23
-        ]
-        connected = [
-            [1, 2, 3, 4], [0, 2, 3], [0, 1, 3, 5], [0, 1, 2, 6],
-            [0, 7], [2, 9], [3, 10],
-            [8, 9, 10, 4], [7, 9, 10, 11], [7, 8, 10, 5, 12], [7, 8, 9],
-            [8, 14], [9, 15],
-            [14, 15, 16, 17], [13, 15, 16, 18, 11, 11, 11, 11, 11], [
-                13, 14, 16, 12, 12, 12, 12, 12], [13, 14, 15, 19],
-            [13, 20], [14, 21], [16, 23],
-            [21, 22, 23, 17], [20, 22, 23, 18], [20, 21, 23], [20, 21, 22, 19]
-        ]
-        random_index = random.randint(0,23)
+        random_index = random.randint(0, 23)
         #random_index = 5
-        init_pos_0 = avaiable_pos[random_index]
-        init_pos_1 = avaiable_pos[random.choice(connected[random_index])]
-        #init_pos_1 = avaiable_pos[9]
+        init_pos_0 = self.__pos_safe[random_index]
+        init_pos_1 = self.__pos_safe[random.choice(
+            self.__id_pos_linked[random_index])]
 
-        self.robots['robot_0'] = Robot(
-            self.world, 0, init_pos_0[0], init_pos_0[1],
+        self.__robots['robot_0'] = Robot(
+            self.__world, 0, init_pos_0[0], init_pos_0[1],
             'robot_0', 0, 'red', COLOR_RED)
-        self.robots['robot_1'] = Robot(
-            self.world, 0, init_pos_1[0], init_pos_1[1],
+        self.__robots['robot_1'] = Robot(
+            self.__world, 0, init_pos_1[0], init_pos_1[1],
             'robot_1', 1, 'blue', COLOR_BLUE)
 
-        self.map = ICRAMap(self.world)
-        self.bullets = Bullet(self.world)
-        self.buff_areas = AllBuffArea()
-        self.supply_areas = SupplyAreas()
-        
+        self.__obstacle = ICRAMap(self.__world)
+        self.__projectile = Bullet(self.__world)
+        self.__area_buff = AllBuffArea()
+        self.__area_supply = SupplyAreas()
+
         self.state["robot_0"] = RobotState()
         self.state["robot_1"] = RobotState()
 
@@ -143,133 +134,112 @@ class ICRAField(gym.Env, EzPickle):
         return init_pos_1
         # return self.step(None)[0]
 
-    def stepCollision(self):
-        collision_bullet_robot = self.contactListener_keepref.collision_bullet_robot
-        collision_bullet_wall = self.contactListener_keepref.collision_bullet_wall
-        collision_robot_wall = self.contactListener_keepref.collision_robot_wall
-        collision_robot_robot = self.contactListener_keepref.collision_robot_robot
-        for bullet, robot in collision_bullet_robot:
-            self.bullets.destroyById(bullet)
-            if(self.robots[robot].buffLeftTime) > 0:
-                self.robots[robot].loseHealth(25)
+    def __step_contact(self):
+        contact_bullet_robot = self.__contactListener_keepref.collision_bullet_robot
+        contact_bullet_wall = self.__contactListener_keepref.collision_bullet_wall
+        contact_robot_wall = self.__contactListener_keepref.collision_robot_wall
+        contact_robot_robot = self.__contactListener_keepref.collision_robot_robot
+        for bullet, robot in contact_bullet_robot:
+            self.__projectile.destroyById(bullet)
+            if(self.__robots[robot].buffLeftTime) > 0:
+                self.__robots[robot].loseHealth(25)
             else:
-                self.robots[robot].loseHealth(50)
-        for bullet in collision_bullet_wall:
-            self.bullets.destroyById(bullet)
-        for robot in collision_robot_wall:
+                self.__robots[robot].loseHealth(50)
+        for bullet in contact_bullet_wall:
+            self.__projectile.destroyById(bullet)
+        for robot in contact_robot_wall:
             pass
-            #self.robots[robot].loseHealth(2000)
-        for robot in collision_robot_robot:
-            self.robots[robot].loseHealth(10)
-        self.contactListener_keepref.clean()
+            # self.robots[robot].loseHealth(2000)
+        for robot in contact_robot_robot:
+            self.__robots[robot].loseHealth(10)
+        self.__contactListener_keepref.clean()
 
-    def stepAction(self, robot_name, action: Action):
+    def __step_action(self, robot_name, action: Action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
-        self.robots[robot_name].moveAheadBack(action.v_t)
-        self.robots[robot_name].turnLeftRight(action.omega)
-        self.robots[robot_name].moveTransverse(action.v_n)
+        self.__robots[robot_name].moveAheadBack(action.v_t)
+        self.__robots[robot_name].turnLeftRight(action.omega)
+        self.__robots[robot_name].moveTransverse(action.v_n)
         if int(self.t * FPS) % (60 * FPS) == 0:
-            self.robots[robot_name].refreshReloadOppotunity()
-        #if action[5] > 0.99:
-            #self.robots[robot_name].addBullets()
+            self.__robots[robot_name].refreshReloadOppotunity()
+        # if action[5] > 0.99:
+            # self.robots[robot_name].addBullets()
             #action[5] = +0.0
         if action.shoot > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-            if(self.robots[robot_name].bullets_num > 0):
-                init_angle, init_pos = self.robots[robot_name].getGunAnglePos()
-                self.bullets.shoot(init_angle, init_pos)
-                self.robots[robot_name].bullets_num -= 1
+            if(self.__robots[robot_name].bullets_num > 0):
+                angle, pos = self.__robots[robot_name].getGunAnglePos()
+                self.__projectile.shoot(angle, pos)
+                self.__robots[robot_name].bullets_num -= 1
 
-    def detectEnemy(self, robot_name):
+    def _autoaim(self, robot_name):
         detected = {}
-        for i in range(-40, 40, 2):
-            angle, pos = self.robots[robot_name].getAnglePos()
-            #angle += math.pi/2
-            angle += i/180*math.pi
-            p1 = (pos[0] + 0.2*math.cos(angle), pos[1] + 0.2*math.sin(angle))
-            p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
-                  pos[1] + SCAN_RANGE*math.sin(angle))
-            self.world.RayCast(self.detect_callback, p1, p2)
-            u = self.detect_callback.userData
-            if u in self.robots.keys():
-                if u not in detected.keys():
-                    p = detected[u] = self.detect_callback.point
-                    #pos = self.robots[robot_name].getPos()
-                    #p = (p[0] - pos[0], p[1] - pos[1])
-                    #angle = math.atan2(p[1], p[0])
-                    # Auto shoot
-                    self.robots[robot_name].setCloudTerrance(angle)
-
-        for robot in self.robots.keys():
-            if robot in detected.keys():
-                self.state[robot_name].detect = True
-                break
-            else:
-                self.state[robot_name].detect = False
-
         scan_distance, scan_type = [], []
+        self.state[robot_name].detect = False
         for i in range(-135, 135, 2):
-            angle, pos = self.robots[robot_name].getAnglePos()
+            angle, pos = self.__robots[robot_name].getAnglePos()
             angle += i/180*math.pi
             p1 = (pos[0] + 0.3*math.cos(angle), pos[1] + 0.3*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
                   pos[1] + SCAN_RANGE*math.sin(angle))
-            self.world.RayCast(self.detect_callback, p1, p2)
-            scan_distance.append(self.detect_callback.fraction)
-            u = self.detect_callback.userData
-            if u in self.robots.keys():
+            self.__world.RayCast(self.__callback_autoaim, p1, p2)
+            scan_distance.append(self.__callback_autoaim.fraction)
+            u = self.__callback_autoaim.userData
+            if u in self.__robots.keys():
                 scan_type.append(1)
+                detected[u] = self.__callback_autoaim.point
+                self.__robots[robot_name].setCloudTerrance(angle)
+                self.state[robot_name].detect = True
             else:
                 scan_type.append(0)
         self.state[robot_name].scan = [scan_distance, scan_type]
 
-    def updateRobotState(self, robot_name):
-        self.state[robot_name].pos = self.robots[robot_name].getPos()
-        self.state[robot_name].health = self.robots[robot_name].health
-        self.state[robot_name].angle = self.robots[robot_name].getAngle()
-        self.state[robot_name].velocity = self.robots[robot_name].getVelocity()
-        self.state[robot_name].angular = self.robots[robot_name].hull.angularVelocity
+    def _update_robot_state(self, robot_name):
+        self.state[robot_name].pos = self.__robots[robot_name].getPos()
+        self.state[robot_name].health = self.__robots[robot_name].health
+        self.state[robot_name].angle = self.__robots[robot_name].getAngle()
+        self.state[robot_name].velocity = self.__robots[robot_name].getVelocity()
+        self.state[robot_name].angular = self.__robots[robot_name].hull.angularVelocity
 
-    def setRobotAction(self, robot_name, action):
+    def set_robot_action(self, robot_name, action):
         self.actions[robot_name] = action
 
     def step(self, action):
         ###### observe ######
-        for robot_name in self.robots.keys():
-            self.detectEnemy(robot_name)
-            self.updateRobotState(robot_name)
+        for robot_name in self.__robots.keys():
+            self._autoaim(robot_name)
+            self._update_robot_state(robot_name)
 
         ###### action ######
-        self.setRobotAction("robot_0", action)
-        for robot_name in self.robots.keys():
+        self.set_robot_action("robot_0", action)
+        for robot_name in self.__robots.keys():
             action = self.actions[robot_name]
             if action is not None:
-                self.stepAction(robot_name, action)
-            self.robots[robot_name].step(1.0/FPS)
-        self.world.Step(1.0/FPS, 6*30, 2*30)
+                self.__step_action(robot_name, action)
+            self.__robots[robot_name].step(1.0/FPS)
+        self.__world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
         ###### Referee ######
-        self.stepCollision()
-        self.buff_areas.detect(
-            [self.robots["robot_0"], self.robots["robot_1"]], self.t)
+        self.__step_contact()
+        self.__area_buff.detect(
+            [self.__robots["robot_0"], self.__robots["robot_1"]], self.t)
 
         ###### reward ######
         step_reward = 0
         done = False
         # First step without action, called from reset()
         if self.actions["robot_0"] is not None:
-            self.reward = (self.robots["robot_0"].health -
-                           self.robots["robot_1"].health) / 4000.0
+            self.reward = (self.__robots["robot_0"].health -
+                           self.__robots["robot_1"].health) / 4000.0
 
             #self.reward += 10 * self.t * FPS
             step_reward = self.reward - self.prev_reward
             if self.state["robot_0"].detect:
                 step_reward += 1/3000
 
-            if self.robots["robot_0"].health <= 0:
+            if self.__robots["robot_0"].health <= 0:
                 done = True
                 #step_reward -= 1
-            if self.robots["robot_1"].health <= 0:
+            if self.__robots["robot_1"].health <= 0:
                 done = True
                 #step_reward += 1
             #self.reward += step_reward
@@ -277,87 +247,69 @@ class ICRAField(gym.Env, EzPickle):
 
         return self.state, step_reward, done, {}
 
+    @staticmethod
+    def get_gl_text(x, y):
+        return pyglet.text.Label('0000', font_size=36, x=x, y=y,
+                                 anchor_x='left', anchor_y='center',
+                                 color=(255, 255, 255, 255))
+
     def render(self, mode='god'):
-        if self.viewer is None:
+        if self.__viewer is None:
             from gym.envs.classic_control import rendering
-            self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
-            self.time_label = pyglet.text.Label('0000', font_size=36,
-                                                x=20, y=WINDOW_H * 5.0 / 40.00, anchor_x='left', anchor_y='center',
-                                                color=(255, 255, 255, 255))
-            self.score_label = pyglet.text.Label('0000', font_size=36,
-                                                 x=20, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
-                                                 color=(255, 255, 255, 255))
-            self.health_label = pyglet.text.Label('0000', font_size=16,
-                                                  x=520, y=WINDOW_H*2.5/40.00, anchor_x='left', anchor_y='center',
-                                                  color=(255, 255, 255, 255))
-            self.bullets_label = pyglet.text.Label('0000', font_size=16,
-                                                   x=520, y=WINDOW_H*3.5/40.00, anchor_x='left', anchor_y='center',
-                                                   color=(255, 255, 255, 255))
-            self.buff_stay_time = pyglet.text.Label('0000', font_size=16,
-                                                    x=520, y=WINDOW_H*4.5/40.00, anchor_x='left', anchor_y='center',
-                                                    color=(255, 255, 255, 255))
-            self.buff_left_time = pyglet.text.Label('0000', font_size=16,
-                                                    x=520, y=WINDOW_H * 5.5 / 40.00, anchor_x='left', anchor_y='center',
-                                                    color=(255, 255, 255, 255))
+            self.__viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
+            self.time_label = get_gl_text(20, WINDOW_H * 5.0 / 40.0)
+            self.score_label = get_gl_text(520, WINDOW_H * 2.5 / 40.0)
+            self.health_label = get_gl_text(520, WINDOW_H * 3.5 / 40.0)
+            self.projectile_label = get_gl_text(520, WINDOW_H * 4.5 / 40.0)
+            self.buff_left_time_label = get_gl_text(520, WINDOW_H * 5.5 / 40.0)
             self.transform = rendering.Transform()
 
         if "t" not in self.__dict__:
             return  # reset() not called yet
 
         zoom = ZOOM*SCALE
-        zoom_state = ZOOM*SCALE*STATE_W/WINDOW_W
-        zoom_video = ZOOM*SCALE*VIDEO_W/WINDOW_W
-        #scroll_x = self.car0.hull.position[0]
-        #scroll_y = self.car0.hull.position[1]
-        #angle = -self.car0.hull.angle
         scroll_x = 4.0
         scroll_y = 0.0
         angle = 0
-        #vel = self.car0.hull.linearVelocity
-        # if np.linalg.norm(vel) > 0.5:
-        #angle = math.atan2(vel[0], vel[1])
         self.transform.set_scale(zoom, zoom)
         self.transform.set_translation(
             WINDOW_W/2 - (scroll_x*zoom*math.cos(angle) -
                           scroll_y*zoom*math.sin(angle)),
             WINDOW_H/4 - (scroll_x*zoom*math.sin(angle) + scroll_y*zoom*math.cos(angle)))
-        # self.transform.set_rotation(angle)
 
-        self.map.draw(self.viewer)
+        self.__obstacle.draw(self.__viewer)
         if mode == 'god':
-            for robot_name in self.robots.keys():
-                self.robots[robot_name].draw(self.viewer)
+            for robot_name in self.__robots.keys():
+                self.__robots[robot_name].draw(self.__viewer)
         elif mode == "fps":
-            self.robots["robot_0"].draw(self.viewer)
-            self.robots["robot_1"].draw(self.viewer)
-        self.bullets.draw(self.viewer)
+            self.__robots["robot_0"].draw(self.__viewer)
+            self.__robots["robot_1"].draw(self.__viewer)
+        self.__projectile.draw(self.__viewer)
 
         arr = None
-        win = self.viewer.window
+        win = self.__viewer.window
         if mode != 'state_pixels':
             win.switch_to()
             win.dispatch_events()
 
-        # if mode == 'god':
-        self.human_render = True
         win.clear()
         t = self.transform
         gl.glViewport(0, 0, WINDOW_W, WINDOW_H)
         t.enable()
         self.render_background()
-        for geom in self.viewer.onetime_geoms:
+        for geom in self.__viewer.onetime_geoms:
             geom.render()
         t.disable()
         self.render_indicators(WINDOW_W, WINDOW_H)
         win.flip()
 
-        self.viewer.onetime_geoms = []
+        self.__viewer.onetime_geoms = []
         return arr
 
     def close(self):
-        if self.viewer is not None:
-            self.viewer.close()
-            self.viewer = None
+        if self.__viewer is not None:
+            self.__viewer.close()
+            self.__viewer = None
 
     def render_background(self):
         gl.glBegin(gl.GL_QUADS)
@@ -375,27 +327,27 @@ class ICRAField(gym.Env, EzPickle):
                 gl.glVertex3f(k*x + 0, k*y + k, 0)
                 gl.glVertex3f(k*x + k, k*y + k, 0)
         gl.glEnd()
-        self.buff_areas.render(gl)
-        self.supply_areas.render(gl)
+        self.__area_buff.render(gl)
+        self.__area_supply.render(gl)
 
     def render_indicators(self, W, H):
         self.time_label.text = "Time: {} s".format(int(self.t))
         self.score_label.text = "Score: %04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
-            self.robots["robot_0"].health, self.robots["robot_1"].health)
-        self.bullets_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
-            self.robots['robot_0'].bullets_num, self.robots['robot_0'].opportuniy_to_add_bullets
+            self.__robots["robot_0"].health, self.__robots["robot_1"].health)
+        self.projectile_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
+            self.__robots['robot_0'].bullets_num, self.__robots['robot_0'].opportuniy_to_add_bullets
         )
-        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.buff_areas.buffAreas[0].maxStayTime),
-                                                                              int(self.buff_areas.buffAreas[1].maxStayTime))
-        self.buff_left_time.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.robots['robot_0'].buffLeftTime),
-                                                                              int(self.robots['robot_1'].buffLeftTime))
+        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.__area_buff.buffAreas[0].maxStayTime),
+                                                                              int(self.__area_buff.buffAreas[1].maxStayTime))
+        self.buff_left_time_label.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.__robots['robot_0'].buffLeftTime),
+                                                                              int(self.__robots['robot_1'].buffLeftTime))
         self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
-        self.bullets_label.draw()
+        self.projectile_label.draw()
         self.buff_stay_time.draw()
-        self.buff_left_time.draw()
+        self.buff_left_time_label.draw()
 
 
 if __name__ == "__main__":
@@ -418,30 +370,44 @@ if __name__ == "__main__":
         global restart
         if k == key.ESCAPE:
             restart = True
-        if k == key.W: a.v_t = +1.0
-        if k == key.S: a.v_t = -1.0
-        if k == key.Q: a.omega = +1.0
-        if k == key.E: a.omega = -1.0
-        if k == key.D: a.v_n = +1.0
-        if k == key.A: a.v_n = -1.0
-        if k == key.SPACE: a.shoot = +1.0
+        if k == key.W:
+            a.v_t = +1.0
+        if k == key.S:
+            a.v_t = -1.0
+        if k == key.Q:
+            a.omega = +1.0
+        if k == key.E:
+            a.omega = -1.0
+        if k == key.D:
+            a.v_n = +1.0
+        if k == key.A:
+            a.v_n = -1.0
+        if k == key.SPACE:
+            a.shoot = +1.0
 
     def key_release(k, mod):
-        if k == key.W: a.v_t = +0.0
-        if k == key.S: a.v_t = -0.0
-        if k == key.Q: a.omega = +0.0
-        if k == key.E: a.omega = -0.0
-        if k == key.D: a.v_n = +0.0
-        if k == key.A: a.v_n = -0.0
-        if k == key.SPACE: a.shoot = +0.0
+        if k == key.W:
+            a.v_t = +0.0
+        if k == key.S:
+            a.v_t = -0.0
+        if k == key.Q:
+            a.omega = +0.0
+        if k == key.E:
+            a.omega = -0.0
+        if k == key.D:
+            a.v_n = +0.0
+        if k == key.A:
+            a.v_n = -0.0
+        if k == key.SPACE:
+            a.shoot = +0.0
 
     env = ICRAField()
     env.render()
     record_video = False
     if record_video:
         env.monitor.start('/tmp/video-test', force=True)
-    env.viewer.window.on_key_press = key_press
-    env.viewer.window.on_key_release = key_release
+    env.__viewer.window.on_key_press = key_press
+    env.__viewer.window.on_key_release = key_release
     #env.viewer.window.on_mouse_release = on_mouse_release
     #move = NaiveMove()
     while True:
