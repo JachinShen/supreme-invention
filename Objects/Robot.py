@@ -4,6 +4,7 @@ import numpy as np
 import math
 import Box2D
 from Box2D.b2 import (fixtureDef, polygonShape, revoluteJointDef, )
+from utils import *
 
 # ICRA 2019 Robot Simulation
 #
@@ -41,38 +42,45 @@ GUN_POLY = [
 
 BULLETS_ADDED_ONE_TIME = 50
 
-SUPPLY_AREAS = {
-    'red': SUPPLYAREABOX_RED,  # (x, y, w, h)
-    'blue': SUPPLYAREABOX_BLUE
-}
+SUPPLY_AREAS = [
+    SUPPLYAREABOX_RED,  # (x, y, w, h)
+    SUPPLYAREABOX_BLUE
+]
+
+ROBOT_COLOR = [COLOR_RED, COLOR_BLUE]
+
 
 class Robot:
-    def __init__(self, world, init_angle, init_x, init_y, userData, robot_id, group, color):
-        self.world = world
-        self.hull = self.world.CreateDynamicBody(
-            position=(init_x, init_y),
-            angle=0,
+
+    def _create_dynamic_body(self, x, y, poly, userData):
+        return self.__world.CreateDynamicBody(
+            position=(x, y), angle=0,
             fixtures=[
-                fixtureDef(shape=polygonShape(vertices=[(x*SIZE, y*SIZE) for x, y in HULL_POLY]),
-                           density=1.0, restitution=1, userData=userData, friction=1),
+                fixtureDef(
+                    shape=polygonShape(vertices=[
+                        (x*SIZE, y*SIZE) for x, y in poly
+                    ]),
+                    density=1.0, restitution=1, userData=userData, friction=1
+                ),
             ]
         )
-        # self.hull.color = (0.8,0.0,0.0)
-        self.hull.color = color
-        self.hull.userData = userData
-        self.wheels = []
+
+    def __init__(self, world, init_angle, init_pos, robot_id):
+        init_x, init_y = init_pos
+        color = ROBOT_COLOR[robot_id]
+        userData = UserData("robot", robot_id)
+        self.__world = world
+        self.__hull = self._create_dynamic_body(
+            init_x, init_y, HULL_POLY, userData)
+        self.__hull.color = color
+        self.__hull.userData = userData
+        self.__wheels = []
         for wx, wy in WHEEL_POS:
-            front_k = 1.0 if wy > 0 else 1.0
-            w = self.world.CreateDynamicBody(
-                position=(init_x+wx*SIZE, init_y+wy*SIZE),
-                angle=0,
-                fixtures=fixtureDef(
-                    shape=polygonShape(
-                        vertices=[(x*front_k*SIZE, y*front_k*SIZE) for x, y in WHEEL_POLY]),
-                    density=1.0, restitution=1, userData=userData + "_wheel", friction=1)
-            )
+            front_k = 1.0
+            w = self._create_dynamic_body(
+                init_x+wx*SIZE, init_y+wy*SIZE, WHEEL_POLY, userData)
             rjd = revoluteJointDef(
-                bodyA=self.hull,
+                bodyA=self.__hull,
                 bodyB=w,
                 localAnchorA=(wx*SIZE, wy*SIZE),
                 localAnchorB=(0, 0),
@@ -81,111 +89,116 @@ class Robot:
                 lowerAngle=-0.0,
                 upperAngle=+0.0,
             )
-            w.joint = self.world.CreateJoint(rjd)
+            w.joint = self.__world.CreateJoint(rjd)
             w.color = WHEEL_COLOR
             w.userData = userData
-            self.wheels.append(w)
+            self.__wheels.append(w)
 
-        self.gun = self.world.CreateDynamicBody(
-            position=(init_x, init_y),
-            angle=0,
-            fixtures=[
-                fixtureDef(
-                    shape=polygonShape(
-                        vertices=[(x*SIZE, y*SIZE) for x, y in GUN_POLY]),
-                    categoryBits=0x00, density=1e-6, userData=userData)
-            ]
-        )
-        self.gun_joint = self.world.CreateJoint(revoluteJointDef(
-            bodyA=self.hull,
-            bodyB=self.gun,
+        self.__gun = self._create_dynamic_body(
+            init_x, init_y, GUN_POLY, userData)
+        self.gun_joint = self.__world.CreateJoint(revoluteJointDef(
+            bodyA=self.__hull,
+            bodyB=self.__gun,
             localAnchorA=(0, 0),
             localAnchorB=(0, 0),
             enableMotor=True,
             enableLimit=True,
             maxMotorTorque=180*900*SIZE*SIZE,
             motorSpeed=0.0,
-            lowerAngle = -math.pi/4,
-            upperAngle = +math.pi/4,
+            lowerAngle=-math.pi/4,
+            upperAngle=+math.pi/4,
         ))
-        self.gun.color = (0.1, 0.1, 0.1)
+        self.__gun.color = (0.1, 0.1, 0.1)
 
-        self.hull.angle = init_angle
-        self.gun.angle = init_angle
-        self.drawlist = self.wheels + [self.hull, self.gun]
-        self.group = group
-        self.robot_id = robot_id
-        self.health = 2000.0
-        self.buffLeftTime = 0
+        self.__hull.angle = init_angle
+        self.__gun.angle = init_angle
+        self.__drawlist = self.__wheels + [self.__hull, self.__gun]
+        self.group = userData
+        self.robot_id = userData
+        self.__health = 2000.0
+        self.buff_left_time = 0
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
 
-        self.bullets_num = 200 # 40
-        self.opportuniy_to_add_bullets = 2
+        self.__n_projectile = 200  # 40
+        self.supply_opportunity_left = 2
 
-    def refreshReloadOppotunity(self):
-        self.opportuniy_to_add_bullets = 2
+    def refresh_supply_oppotunity(self):
+        self.supply_opportunity_left = 2
 
-    def addBullets(self):
-        if(self.opportuniy_to_add_bullets <= 0):
+    def supply(self):
+        if(self.supply_opportunity_left <= 0):
             return
-        self.opportuniy_to_add_bullets -= 1
-        if(self.isInSupplyArea()):
-            # if(SupplyAreas.isInSupplyArea(self)):
-            self.bullets_num += BULLETS_ADDED_ONE_TIME
+        self.supply_opportunity_left -= 1
+        if(self.if_in_supplyarea()):
+            self.__n_projectile += BULLETS_ADDED_ONE_TIME
 
-    def isInSupplyArea(self):
-        # TODO(zhouyiyuan): define the supply area and implement this function
-        # return True
+    def if_in_supplyarea(self):
         if(self.group not in SUPPLY_AREAS.keys()):
             return False
         supply_area = SUPPLY_AREAS[self.group]
-        x_robot, y_robot = self.hull.position.x, self.hull.position.y
+        x_robot, y_robot = self.__hull.position.x, self.__hull.position.y
         bx, by, w, h = supply_area
         if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
             return True
         else:
             return False
 
-    def getGunAnglePos(self):
-        return self.gun.angle, self.gun.position
+    def get_pos(self):
+        return self.__hull.position
 
-    def getAnglePos(self):
-        return self.hull.angle, self.hull.position
+    def get_angle(self):
+        return self.__hull.angle
 
-    def getPos(self):
-        return self.hull.position
+    def get_velocity(self):
+        return self.__hull.linearVelocity
 
-    def getVelocity(self):
-        return self.hull.linearVelocity
+    def get_angular(self):
+        return self.__hull.angularVelocity
 
-    def getAngle(self):
-        return self.hull.angle
+    def get_gun_angle_pos(self):
+        return self.__gun.angle, self.__gun.position
 
-    def getWorldselfVector(self):
-        return self.hull.GetWorldVector
+    def get_angle_pos(self):
+        return self.__hull.angle, self.__hull.position
 
-    def rotateCloudTerrance(self, angular_vel):
+    def get_world_vector(self):
+        return self.__hull.GetWorldVector
+
+    def lose_health(self, damage):
+        self.__health -= damage
+
+    def get_health(self):
+        return self.__health
+
+    def get_left_projectile(self):
+        return self.__n_projectile
+
+    def if_left_projectile(self):
+        return self.__n_projectile > 0
+
+    def shoot(self):
+        self.__n_projectile -= 1
+
+    def rotate_gimbal(self, angular_vel):
         self.gun_joint.motorSpeed = angular_vel
 
-    def setCloudTerrance(self, angle):
-        self.gun.angle = angle
+    def set_gimbal(self, angle):
+        self.__gun.angle = angle
 
-    def moveAheadBack(self, gas):
+    def move_ahead_back(self, gas):
         self.command["ahead"] = gas
 
-    def moveTransverse(self, transverse):
+    def move_left_right(self, transverse):
         self.command["transverse"] = transverse
 
-    def loseHealth(self, damage):
-        self.health -= damage
 
-    def turnLeftRight(self, r):
+    def turn_left_right(self, r):
         self.command["rotate"] = r
 
     def step(self, dt):
-        forw = self.hull.GetWorldVector((1, 0))  # forward
-        side = self.hull.GetWorldVector((0, -1))
-        v = self.hull.linearVelocity
+        forw = self.__hull.GetWorldVector((1, 0))  # forward
+        side = self.__hull.GetWorldVector((0, -1))
+        v = self.__hull.linearVelocity
         vf = forw[0]*v[0] + forw[1]*v[1]  # forward speed???
         vs = side[0]*v[0] + side[1]*v[1]  # side speed
         #f_a = (-vf + self.command["ahead"]) * 5
@@ -196,33 +209,32 @@ class Robot:
         f_force = self.command["ahead"]
         p_force = self.command["transverse"]
 
-        #self.hull.ApplyForceToCenter((
-            #(p_force)*side[0] + f_force*forw[0],
-            #(p_force)*side[1] + f_force*forw[1]), True)
-        self.hull.linearVelocity = (
+        # self.hull.ApplyForceToCenter((
+        #(p_force)*side[0] + f_force*forw[0],
+        # (p_force)*side[1] + f_force*forw[1]), True)
+        self.__hull.linearVelocity = (
             (p_force)*side[0] + f_force*forw[0],
             (p_force)*side[1] + f_force*forw[1])
 
-        #omega = - self.hull.angularVelocity * \
-            #0.5 + self.command["rotate"] * 2
+        # omega = - self.hull.angularVelocity * \
+        #0.5 + self.command["rotate"] * 2
         #torque = self.hull.mass * omega
         #self.hull.ApplyTorque(torque, True)
-        self.hull.angularVelocity = self.command["rotate"] * 3
+        self.__hull.angularVelocity = self.command["rotate"] * 3
 
     def draw(self, viewer):
-        for obj in self.drawlist:
+        for obj in self.__drawlist:
             for f in obj.fixtures:
                 trans = f.body.transform
                 path = [trans*v for v in f.shape.vertices]
-                # print(path)
                 viewer.draw_polygon(path, color=obj.color)
 
     def destroy(self):
-        self.world.DestroyBody(self.hull)
-        self.hull = None
-        for w in self.wheels:
-            self.world.DestroyBody(w)
-        self.wheels = []
-        if self.gun:
-            self.world.DestroyBody(self.gun)
-        self.gun = None
+        self.__world.DestroyBody(self.__hull)
+        self.__hull = None
+        for w in self.__wheels:
+            self.__world.DestroyBody(w)
+        self.__wheels = []
+        if self.__gun:
+            self.__world.DestroyBody(self.__gun)
+        self.__gun = None

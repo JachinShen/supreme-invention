@@ -19,11 +19,11 @@ class ICRAContactListener(contactListener):
     def PreSolve(self, contact, oldManifold):
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
-        #print(u1, u2)
-        if type(u1) != str or type(u2) != str:
+        if u1 is None or u2 is None:
             return
-        u1_type = u1.split("_")[0]
-        u2_type = u2.split("_")[0]
+        #print(u1, u2)
+        u1_type, u1_id = u1.type, u1.id
+        u2_type, u2_id = u2.type, u2.id
         if u1_type == "bullet" and u2_type == "robot":
             self.collision_bullet_robot.append((u1, u2))
         if u2_type == "bullet" and u1_type == "robot":

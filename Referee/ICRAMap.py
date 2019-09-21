@@ -2,6 +2,7 @@ import numpy as np
 import math
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape, fixtureDef)
+from utils import *
 #import cv2
 import matplotlib.pyplot as plt
 import os
@@ -34,6 +35,7 @@ BUFFAREA_BOX = [(0.2, 0.2), (0.2, 0.2)]
 class ICRAMap:
     def __init__(self, world=None):
         if(world):
+            userData = UserData("wall", None)
             self.world = world
             self.borders = [world.CreateStaticBody(
                 position=p,
@@ -42,12 +44,12 @@ class ICRAMap:
                 fixtures = [
                     fixtureDef(
                         shape = polygonShape(box=b),
-                        density=0.01, userData="wall", friction=1)
+                        density=0.01, userData=userData, friction=1)
                 ]
                 ) for p, b in zip(BORDER_POS + OBSTACLE_POS, BORDER_BOX + OBSTACLE_BOX)]
             for i in range(len(self.borders)):
                 self.borders[i].color = COLOR_WHITE
-                self.borders[i].userData = "wall"
+                self.borders[i].userData = userData
 
             self.buff_area = zip(BUFFAREA_POS, BUFFAREA_BOX)
 

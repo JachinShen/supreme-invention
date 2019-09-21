@@ -1,3 +1,4 @@
+from Objects.Robot import Robot
 BUFFAREABOX_RED = (5.8, 1.25, 1.0, 1.0)  # (x, y, w, h)
 BUFFAREABOX_BLUE = (1.2, 2.75, 1.0, 1.0)
 
@@ -19,9 +20,9 @@ class AllBuffArea(object):
 
     def detect(self, robots, curTime):
         for robot in robots:
-            if(robot.buffLeftTime > 0):
-                robot.buffLeftTime -= curTime - self.preTime
-            robot.buffLeftTime = max(0, robot.buffLeftTime)
+            if(robot.buff_left_time > 0):
+                robot.buff_left_time -= curTime - self.preTime
+            robot.buff_left_time = max(0, robot.buff_left_time)
             # print(car.car_id, car.buffLeftTime)
         for buff in self.buffAreas:
             buff.detect(robots, curTime)
@@ -46,6 +47,7 @@ class BuffArea(object):
         self.activated = False
 
     def detect(self, objects, curTime):
+        return
         # 0, 1, 2min refresh
         if(int(curTime * FPS) % (60 * FPS) == 0):
             self.activated = False
@@ -56,9 +58,9 @@ class BuffArea(object):
                 if(self.cover(car)):
                     if(car.hull.userData not in self.stayTime.keys()):
                         self.stayTime[car.hull.userData] = 0
-                    self.stayTime[car.hull.userData] += curTime - self.preTime
+                    self.stayTime[car.robot_id] += curTime - self.preTime
                 else:
-                    self.stayTime[car.hull.userData] = 0
+                    self.stayTime[car.robot_id] = 0
         self.preTime = curTime
 
         self.maxStayTime = max(self.stayTime.values()) if self.stayTime else 0
@@ -70,10 +72,10 @@ class BuffArea(object):
                 if(car.group == self.group):
                     car.buffLeftTime = self.maxBuffLeftTime
 
-    def cover(self, robot):
+    def cover(self, robot: Robot):
         # print('location:{}, {}'.format(robot.hull.position.x, robot.hull.position.y))
         # print(self.box, self.isLocated((robot.hull.position.x, robot.hull.position.y), self.box))
-        return self.isLocated((robot.hull.position.x, robot.hull.position.y), self.box)
+        return self.isLocated(robot.get_pos(),self.box)
 
     def isLocated(self, point, box):
         px, py = point
