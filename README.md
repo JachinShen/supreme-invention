@@ -45,7 +45,7 @@ python3 test.py
 ```
 
 ## Screenshot
-![](./screenshot.png)
+![](imgs/screenshot.png)
 
 ## TODO
 

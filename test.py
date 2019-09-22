@@ -12,13 +12,11 @@ from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
-from SupportAlgorithm.DataStructure import Action, RobotState
+from utils import *
 
 move = NaiveMove()
 
 TARGET_UPDATE = 10
-ID_R1 = 0
-ID_B1 = 1
 
 seed = 233
 torch.random.manual_seed(seed)
@@ -27,6 +25,7 @@ np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
+env.seed(123)
 agent = ActorCriticAgent()
 agent2 = HandAgent()
 agent.load_model()
@@ -43,11 +42,11 @@ for i_episode in range(num_episodes):
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         # Other agent
-        env.set_robot_action("robot_1", agent2.select_action(state["robot_1"]))
+        env.set_robot_action(ID_B1, agent2.select_action(state[ID_B1]))
 
         # Select and perform an action
         action = Action()
-        state_map = agent.perprocess_state(state["robot_0"])
+        state_map = agent.perprocess_state(state[ID_R1])
         a_m, a_t = agent.select_action(state_map, "max_probability")
         if a_m == 0: # left
             action.v_n = -1.0
@@ -57,20 +56,20 @@ for i_episode in range(num_episodes):
             action.v_n = +1.0
 
         if a_t == 0: # left
-            action.omega = +1.0
+            action.angular = +1.0
         elif a_t == 1: # stay
             pass
         elif a_t == 2: # right
-            action.omega = -1.0
+            action.angular = -1.0
 
-        if state["robot_0"].detect:
+        if state[ID_R1].detect:
             action.shoot = +1.0
         else:
             action.shoot = 0.0
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state_map = agent.perprocess_state(next_state["robot_0"])
+        next_state_map = agent.perprocess_state(next_state[ID_R1])
 
         # Store the transition in memory
         agent.push(state_map, next_state_map, [a_m, a_t], [reward])

@@ -1,5 +1,8 @@
 from collections import namedtuple
 
+ID_R1 = 0
+ID_B1 = 1
+
 COLOR_BLACK = (0.0, 0.0, 0.0)
 COLOR_RED = (0.8, 0.0, 0.0)
 COLOR_BLUE = (0.0, 0.0, 0.8)

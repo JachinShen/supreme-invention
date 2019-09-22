@@ -1,3 +1,5 @@
+# ICRA 2019 Battlefield simulator.
+# Based on Top-down car dynamics simulation from OpenAI Gym.
 import math
 import random
 import sys
@@ -29,10 +31,6 @@ FPS = 30
 ZOOM = 2.7        # Camera zoom
 
 SCAN_RANGE = 5  # m
-
-ID_R1 = 0
-ID_B1 = 1
-
 
 def robotName2ID(robot_name):
     if robot_name == "robot_0":
@@ -108,8 +106,10 @@ class ICRAField(gym.Env, EzPickle):
         random_index = random.randint(0, 23)
         #random_index = 5
         init_pos_0 = self.__pos_safe[random_index]
+        #init_pos_1 = self.__pos_safe[9]
         init_pos_1 = self.__pos_safe[random.choice(
             self.__id_pos_linked[random_index])]
+        print(init_pos_0, init_pos_1)
 
         self.__R1 = Robot(self.__world, 0, init_pos_0, ID_R1)
         self.__B1 = Robot(self.__world, 0, init_pos_1, ID_B1)
@@ -142,7 +142,8 @@ class ICRAField(gym.Env, EzPickle):
         for bullet in contact_bullet_wall:
             self.__projectile.destroyById(bullet.id)
         for robot in contact_robot_wall:
-            self.__robots[robot.id].lose_health(100)
+            pass
+            #self.__robots[robot.id].lose_health(100)
         for robot in contact_robot_robot:
             self.__robots[robot.id].lose_health(10)
         self.__contactListener_keepref.clean()
@@ -181,9 +182,10 @@ class ICRAField(gym.Env, EzPickle):
             u = self.__callback_autoaim.userData
             if u is not None and u.type == "robot":
                 scan_type.append(1)
-                if not state.detect:
-                    robot.set_gimbal(angle)
-                    state.detect = True
+                if -45 <= i <= 45:
+                    if not state.detect:
+                        robot.set_gimbal(angle)
+                        state.detect = True
             else:
                 scan_type.append(0)
         state.scan = [scan_distance, scan_type]

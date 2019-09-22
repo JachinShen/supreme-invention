@@ -1,84 +1,65 @@
 import numpy as np
 import math
 import Box2D
-from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape, fixtureDef)
+from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape,
+                      revoluteJointDef, contactListener, shape, fixtureDef)
 from utils import *
-#import cv2
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import os
-
-# Top-down car dynamics simulation.
-#
-# Some ideas are taken from this great tutorial http://www.iforce2d.net/b2dtut/top-down-car by Chris Campbell.
-# This simulation is a bit more detailed, with wheels rotation.
-#
-# Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
 
 SIZE = 1
 
-COLOR_WHITE = (1.0, 1.0, 1.0)
-
 #center_x, center_y
-BORDER_POS = [(-0.1, 2.5),(4,-0.1), (4, 5.1), (8.1,2.5)]
+BORDER_POS = [(-0.1, 2.5), (4, -0.1), (4, 5.1), (8.1, 2.5)]
 #width/2, height/2
-BORDER_BOX = [(0.1, 2.5), (4,0.1), (4,0.1), (0.1, 2.5)]
+BORDER_BOX = [(0.1, 2.5), (4, 0.1), (4, 0.1), (0.1, 2.5)]
 
-OBSTACLE_POS = [(1.525,1.9),(3.375,0.5),(6.475,3.1),(4.625,4.5),(1.7,3.875),(4,2.5),(6.3, 1.125)]
-OBSTACLE_BOX=[(0.125, 0.5),(0.125, 0.5),(0.125, 0.5),(0.125, 0.5),
-              (0.5,0.125), (0.5, 0.125),(0.5, 0.125)]  # Half of the width and height
-
-COLOR_RED = (1.0, 0.0, 0.0)
-
-BUFFAREA_POS = [(2.3, 4.3), (2, 3)]
-BUFFAREA_BOX = [(0.2, 0.2), (0.2, 0.2)]
+OBSTACLE_POS = [(1.525, 1.9), (3.375, 0.5), (6.475, 3.1),
+                (4.625, 4.5), (1.7, 3.875), (4, 2.5), (6.3, 1.125)]
+OBSTACLE_BOX = [(0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
+                (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the width and height
 
 class ICRAMap:
     def __init__(self, world=None):
         if(world):
             userData = UserData("wall", None)
-            self.world = world
-            self.borders = [world.CreateStaticBody(
+            self.__world = world
+            self.__borders = [world.CreateStaticBody(
                 position=p,
-                #shapes=polygonShape(box=b),
+                # shapes=polygonShape(box=b),
                 #userData = "wall"
-                fixtures = [
+                fixtures=[
                     fixtureDef(
-                        shape = polygonShape(box=b),
+                        shape=polygonShape(box=b),
                         density=0.01, userData=userData, friction=1)
                 ]
-                ) for p, b in zip(BORDER_POS + OBSTACLE_POS, BORDER_BOX + OBSTACLE_BOX)]
-            for i in range(len(self.borders)):
-                self.borders[i].color = COLOR_WHITE
-                self.borders[i].userData = userData
+            ) for p, b in zip(BORDER_POS + OBSTACLE_POS, BORDER_BOX + OBSTACLE_BOX)]
+            for i in range(len(self.__borders)):
+                self.__borders[i].color = COLOR_WHITE
+                self.__borders[i].userData = userData
 
-            self.buff_area = zip(BUFFAREA_POS, BUFFAREA_BOX)
+            self.__drawlist = self.__borders
 
-            self.drawlist = self.borders
-
-        self.image_file = 'map.npy'
-        self.image = self.imread_map()
+        #self.image_file = 'map.npy'
+        #self.image = self.imread_map()
 
     def step(self, dt):
         pass
 
     def draw(self, viewer, draw_particles=True):
-        for obj in self.drawlist:
+        for obj in self.__drawlist:
             for f in obj.fixtures:
                 trans = f.body.transform
                 path = [trans*v for v in f.shape.vertices]
-                #print("ICRA Map")
-                #print(path)
                 viewer.draw_polygon(path, color=obj.color)
 
     def destroy(self):
-        for border in self.borders:
-            self.world.DestroyBody(border)
+        for border in self.__borders:
+            self.__world.DestroyBody(border)
 
     def imread_map(self):
         if(not os.path.isfile(self.image_file)):
             return self.imwrite_map(self.image_file)
-
-        #return np.load(self.image_file)
 
     def imwrite_map(self, image_file):
         width = 80
@@ -105,18 +86,16 @@ class ICRAMap:
             #top = height - p[1] + b[1]
             #bottom = height - p[1] - b[1]
 
-            img[bottom:top, left:right] = np.zeros((top - bottom, right - left))
+            img[bottom:top, left:right] = np.zeros(
+                (top - bottom, right - left))
 
-        #np.save(image_file, img)
+        np.save(image_file, img)
         return img
 
 
 if __name__ == '__main__':
     m = ICRAMap()
-    plt.ylim(0, 49)
-    plt.xlim(0, 79)
-    plt.imshow(m.image)
-    plt.show()
-
-
-
+    #plt.ylim(0, 49)
+    #plt.xlim(0, 79)
+    #plt.imshow(m.image)
+    #plt.show()

@@ -5,9 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import cv2
 from SupportAlgorithm.NaiveMove import NaiveMove
-from SupportAlgorithm.DataStructure import Action, RobotState
+from utils import Action, RobotState
 
 class HandAgent():
     def __init__(self):

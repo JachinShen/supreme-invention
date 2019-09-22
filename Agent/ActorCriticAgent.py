@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from Agent.Actor import ActorCritic
 from util.Grid import MARGIN, Map
-from SupportAlgorithm.DataStructure import Action, RobotState
+from utils import Action, RobotState
 
 BATCH_SIZE = 2048
 GAMMA = 0.99
@@ -221,14 +221,14 @@ class ActorCriticAgent():
         return loss.item()
 
     def save_model(self):
-        torch.save(self.policy_net.state_dict(), "Actor.model")
+        torch.save(self.policy_net.state_dict(), "ICRA.model")
 
     def save_memory(self, file_name):
         torch.save(self.memory, file_name)
 
     def load_model(self):
         self.policy_net.load_state_dict(torch.load(
-            "Actor.model", map_location=self.device))
+            "ICRA.model", map_location=self.device))
 
     def load_memory(self, file_name):
         self.memory = torch.load(file_name)

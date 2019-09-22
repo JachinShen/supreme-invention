@@ -52,7 +52,7 @@ ROBOT_COLOR = [COLOR_RED, COLOR_BLUE]
 
 class Robot:
 
-    def _create_dynamic_body(self, x, y, poly, userData):
+    def _create_dynamic_body(self, x, y, poly, userData, density=1.0):
         return self.__world.CreateDynamicBody(
             position=(x, y), angle=0,
             fixtures=[
@@ -60,7 +60,7 @@ class Robot:
                     shape=polygonShape(vertices=[
                         (x*SIZE, y*SIZE) for x, y in poly
                     ]),
-                    density=1.0, restitution=1, friction=1, userData=userData
+                    density=density, restitution=1, friction=1, userData=userData
                 ),
             ]
         )
@@ -93,7 +93,7 @@ class Robot:
             #w.userData = userData
             self.__wheels.append(w)
 
-        self.__gun = self._create_dynamic_body(init_x, init_y, GUN_POLY, userData)
+        self.__gun = self._create_dynamic_body(init_x, init_y, GUN_POLY, userData, density=1e-4)
         self.gun_joint = self.__world.CreateJoint(revoluteJointDef(
             bodyA=self.__hull,
             bodyB=self.__gun,
