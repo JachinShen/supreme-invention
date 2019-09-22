@@ -133,17 +133,6 @@ class Robot:
     def use_supply_oppotunity(self):
         self.supply_opportunity_left -= 1
 
-    #def if_in_supplyarea(self):
-        #if(self.group not in SUPPLY_AREAS.keys()):
-            #return False
-        #supply_area = SUPPLY_AREAS[self.group]
-        #x_robot, y_robot = self.__hull.position.x, self.__hull.position.y
-        #bx, by, w, h = supply_area
-        #if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
-            #return True
-        #else:
-            #return False
-
     def get_pos(self):
         return self.__hull.position
 

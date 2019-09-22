@@ -17,7 +17,7 @@ from Referee.ICRAContactListener import ICRAContactListener
 from Referee.ICRAMap import ICRAMap
 from Referee.SupplyArea import SupplyAreas
 from SupportAlgorithm.DetectCallback import detectCallback
-from SupportAlgorithm.DataStructure import Action, RobotState
+#from SupportAlgorithm.DataStructure import Action, RobotState
 from utils import *
 
 WINDOW_W = 1200
@@ -120,8 +120,8 @@ class ICRAField(gym.Env, EzPickle):
         self.__area_buff = AllBuffArea()
         self.__area_supply = SupplyAreas()
 
-        self.state = [RobotState(), RobotState()]
-        self.actions = [None, None]
+        self.state = [RobotState(init_pos_0), RobotState(init_pos_1)]
+        self.actions = [Action(), Action()]
 
         self.reward = 0
 
@@ -147,8 +147,7 @@ class ICRAField(gym.Env, EzPickle):
             self.__robots[robot.id].lose_health(10)
         self.__contactListener_keepref.clean()
 
-    def __step_action(self, robot: Robot, action: Action):
-        #robot = self.__robots[robot_name]
+    def _step_action(self, robot: Robot, action: Action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
         robot.move_ahead_back(action.v_t)
         robot.turn_left_right(action.omega)
@@ -167,7 +166,7 @@ class ICRAField(gym.Env, EzPickle):
                 robot.shoot()
                 self.__projectile.shoot(angle, pos)
 
-    def _autoaim(self, robot, state):
+    def _autoaim(self, robot: Robot, state: RobotState):
         #detected = {}
         scan_distance, scan_type = [], []
         state.detect = False
@@ -189,17 +188,17 @@ class ICRAField(gym.Env, EzPickle):
                 scan_type.append(0)
         state.scan = [scan_distance, scan_type]
 
-    def _update_robot_state(self, robot, state):
+    def _update_robot_state(self, robot: Robot, state: RobotState):
         state.pos = robot.get_pos()
         state.health = robot.get_health()
         state.angle = robot.get_angle()
         state.velocity = robot.get_velocity()
         state.angular = robot.get_angular()
 
-    def set_robot_action(self, robot_id, action):
+    def set_robot_action(self, robot_id, action: Action):
         self.actions[robot_id] = action
 
-    def step(self, action):
+    def step(self, action: Action):
         ###### observe ######
         for robot, state in zip(self.__robots, self.state):
             self._autoaim(robot, state)
@@ -209,7 +208,7 @@ class ICRAField(gym.Env, EzPickle):
         self.set_robot_action(ID_R1, action)
         for robot, action in zip(self.__robots, self.actions):
             if action is not None:
-                self.__step_action(robot, action)
+                self._step_action(robot, action)
             robot.step(1.0/FPS)
         self.__world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
@@ -335,7 +334,8 @@ class ICRAField(gym.Env, EzPickle):
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.__robots[ID_R1].get_health(), self.__robots[ID_B1].get_health())
         self.projectile_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
-            self.__robots[ID_R1].get_left_projectile(), self.__robots[ID_R1].supply_opportunity_left
+            self.__robots[ID_R1].get_left_projectile(
+            ), self.__robots[ID_R1].supply_opportunity_left
         )
         self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.__area_buff.buffAreas[0].maxStayTime),
                                                                               int(self.__area_buff.buffAreas[1].maxStayTime))
@@ -374,9 +374,9 @@ if __name__ == "__main__":
         if k == key.S:
             a.v_t = -1.0
         if k == key.Q:
-            a.omega = +1.0
+            a.angular = +1.0
         if k == key.E:
-            a.omega = -1.0
+            a.angular = -1.0
         if k == key.D:
             a.v_n = +1.0
         if k == key.A:
@@ -386,16 +386,15 @@ if __name__ == "__main__":
         if k == key.R:
             a.supply = +1.0
 
-
     def key_release(k, mod):
         if k == key.W:
             a.v_t = +0.0
         if k == key.S:
             a.v_t = -0.0
         if k == key.Q:
-            a.omega = +0.0
+            a.angular = +0.0
         if k == key.E:
-            a.omega = -0.0
+            a.angular = -0.0
         if k == key.D:
             a.v_n = +0.0
         if k == key.A:
