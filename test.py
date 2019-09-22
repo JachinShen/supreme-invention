@@ -17,11 +17,13 @@ from utils import *
 
 parser = argparse.ArgumentParser(
     description="Test the trained model in the ICRA 2019 Battlefield")
-parser.add_argument("--epoch", type=int, default=50,
-                    help="Number of epoches to test")
 parser.add_argument("--seed", type=int, default=233, help="Random seed")
 parser.add_argument("--enemy", type=str, default="hand",
                     help="The opposite agent type [AC, hand]")
+parser.add_argument("--load_model", action = 'store_true', help = "Whether to load the trained model")
+parser.add_argument("--load_model_path", type = str, default = "ICRA.model", help = "The path of trained model")
+parser.add_argument("--epoch", type=int, default=50,
+                    help="Number of epoches to test")
 args = parser.parse_args()
 
 
@@ -32,12 +34,14 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 agent = ActorCriticAgent()
-agent.load_model()
+if args.load_model:
+    print("Load model")
+    agent.load_model(args.load_model_path)
 if args.enemy == "hand":
     agent2 = HandAgent()
 elif args.enemy == "AC":
     agent2 = ActorCriticAgent()
-    agent2.load_model()
+    agent2.load_model(args.load_model_path)
 else:
     print("Unknown agent!!!")
     exit()

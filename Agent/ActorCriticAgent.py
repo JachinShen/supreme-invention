@@ -245,18 +245,18 @@ class ActorCriticAgent():
 
         return loss.item()
 
-    def save_model(self):
-        torch.save(self.policy_net.state_dict(), "ICRA.model")
+    def save_model(self, file_path):
+        torch.save(self.policy_net.state_dict(), file_path)
 
-    def save_memory(self, file_name):
-        torch.save(self.memory, file_name)
+    def save_memory(self, file_path):
+        torch.save(self.memory, file_path)
 
-    def load_model(self):
+    def load_model(self, file_path):
         self.policy_net.load_state_dict(torch.load(
-            "ICRA.model", map_location=self.device))
+            file_path, map_location=self.device))
 
-    def load_memory(self, file_name):
-        self.memory = torch.load(file_name)
+    def load_memory(self, file_path):
+        self.memory = torch.load(file_path)
 
     def optimize_offline(self, num_epoch):
         def batch_state_map(transitions):
