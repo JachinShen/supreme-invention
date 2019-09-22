@@ -2,6 +2,7 @@
 https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import random
+import argparse
 from collections import namedtuple
 from itertools import count
 
@@ -14,35 +15,51 @@ from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
 from utils import *
 
+parser = argparse.ArgumentParser(
+    description="Test the trained model in the ICRA 2019 Battlefield")
+parser.add_argument("--epoch", type=int, default=50,
+                    help="Number of epoches to test")
+parser.add_argument("--seed", type=int, default=233, help="Random seed")
+parser.add_argument("--enemy", type=str, default="hand",
+                    help="The opposite agent type [AC, hand]")
+args = parser.parse_args()
+
+
 move = NaiveMove()
+torch.random.manual_seed(args.seed)
+torch.cuda.random.manual_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
 
-TARGET_UPDATE = 10
-
-seed = 233
-torch.random.manual_seed(seed)
-torch.cuda.random.manual_seed(seed)
-np.random.seed(seed)
-random.seed(seed)
+agent = ActorCriticAgent()
+agent.load_model()
+if args.enemy == "hand":
+    agent2 = HandAgent()
+elif args.enemy == "AC":
+    agent2 = ActorCriticAgent()
+    agent2.load_model()
+else:
+    print("Unknown agent!!!")
+    exit()
 
 env = ICRAField()
-env.seed(seed)
-agent = ActorCriticAgent()
-agent2 = HandAgent()
-agent.load_model()
-device = agent.device
-episode_durations = []
+env.seed(args.seed)
 
-num_episodes = 50
-for i_episode in range(num_episodes):
+for i_episode in range(args.epoch):
     print("Epoch: {}".format(i_episode))
     # Initialize the environment and state
     action = Action()
     pos = env.reset()
-    agent2.reset(pos)
+    if args.enemy == "hand":
+        agent2.reset(pos)
     state, reward, done, info = env.step(action)
     for t in range(7*60*30):
         # Other agent
-        env.set_robot_action(ID_B1, agent2.select_action(state[ID_B1]))
+        if args.enemy == "hand":
+            env.set_robot_action(ID_B1, agent2.select_action(state[ID_B1]))
+        elif args.enemy == "AC":
+            env.set_robot_action(ID_B1, agent2.select_action(
+                state[ID_B1], mode="max_probability"))
 
         # Select and perform an action
         action = agent.select_action(state[ID_R1], "max_probability")
@@ -52,9 +69,7 @@ for i_episode in range(num_episodes):
         state = next_state
 
         env.render()
-
         if done:
-            episode_durations.append(t + 1)
             break
 
 env.close()
