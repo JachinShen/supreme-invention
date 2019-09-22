@@ -4,30 +4,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from torch.autograd import Variable
-import matplotlib.pyplot as plt
 
 class ActorCritic(nn.Module):
     def __init__(self):
         super(ActorCritic, self).__init__()
-        '''
-        self.extractor = nn.Sequential(
-            nn.Conv1d(2, 16, 6), # 135 -> 130
-            nn.MaxPool1d(2, 2), # 65
-            nn.ReLU(),
-            nn.Conv1d(16, 64, 6), # 60
-            nn.MaxPool1d(2, 2), # 30
-            nn.ReLU(),
-            nn.Conv1d(64, 128, 3), # 28
-            nn.MaxPool1d(2, 2), # 14
-            nn.ReLU(),
-            nn.Conv1d(128, 256, 3), # 12
-            nn.MaxPool1d(2, 2), # 6
-            nn.ReLU(),
-            nn.Conv1d(256, 512, 3), # 4
-            nn.MaxPool1d(2, 2), # 2
-            nn.ReLU(),
-        )
-        '''
         self.fc = nn.Sequential(
             nn.Linear(135*2, 1024),
             nn.ReLU(),
@@ -47,7 +27,6 @@ class ActorCritic(nn.Module):
         )
 
     def forward(self, s):
-        #h = self.extractor(s)
         h = s
         wall = torch.stack([
             torch.min(s[:,0,135//2+45//2:], dim=1)[0], 
@@ -60,7 +39,6 @@ class ActorCritic(nn.Module):
             torch.mean(s[:,1,135//2-45//2:135//2+45//2], dim=1), 
             torch.mean(s[:,1,:135//2-45//2], dim=1)], dim=1) # batch, 3
         enemy = F.softmax(enemy, dim=1)
-        #print(h.shape)
         batch, channel, seq = h.shape
         h = h.reshape([batch, -1])
         head = self.fc(h)

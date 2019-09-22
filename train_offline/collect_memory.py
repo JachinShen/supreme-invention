@@ -40,7 +40,7 @@ for i_episode in range(1, num_episodes):
     pos = env.reset()
     agent2.reset(pos)
     state, reward, done, info = env.step(action)
-    state_map = agent.perprocess_state(state)
+    state_map = agent.preprocess(state)
     for t in range(2*60*30):
         if t % (60*30) == 0:
             print("Simulation in minute: [{}:00/7:00]".format(t//(60*30)))
@@ -63,7 +63,7 @@ for i_episode in range(1, num_episodes):
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state_map = agent.perprocess_state(next_state)
+        next_state_map = agent.preprocess(next_state)
 
         # Store the transition in memory
         agent.push(next_state_map, reward)

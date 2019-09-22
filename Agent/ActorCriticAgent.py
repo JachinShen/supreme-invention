@@ -3,19 +3,15 @@ import random
 import time
 from collections import namedtuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from scipy.stats import multivariate_normal
 from torch.autograd import Variable
-from torch.utils.data import DataLoader, RandomSampler
-from tqdm import tqdm
+from torch.utils.data import DataLoader
 
 from Agent.Actor import ActorCritic
-from util.Grid import MARGIN, Map
 from utils import Action, RobotState
 
 BATCH_SIZE = 2048
@@ -46,8 +42,8 @@ class ReplayMemory(object):
     def push(self, *args):
         """Saves a transition."""
         self.epoch_memory.append(Transition(*args))
-        #if len(self.main_memory) < self.capacity:
-            #self.main_memory.append(None)
+        # if len(self.main_memory) < self.capacity:
+        # self.main_memory.append(None)
         #self.main_memory[self.position] = Transition(*args)
         #self.position = (self.position + 1) % self.capacity
 
@@ -64,13 +60,15 @@ class ReplayMemory(object):
                 state, action, next_state, reward = t
                 reward = reward[0]
                 R = reward + GAMMA*R
-                self.main_memory.append(Transition(state, action, next_state, [R]))
+                self.main_memory.append(Transition(
+                    state, action, next_state, [R]))
         else:
             for t in self.epoch_memory[::-1]:
                 state, action, next_state, reward = t
                 reward = reward[0]
                 R = reward + GAMMA*R
-                self.main_memory[self.position] = Transition(state, action, next_state, [R])
+                self.main_memory[self.position] = Transition(
+                    state, action, next_state, [R])
                 self.position = (self.position + 1) % self.capacity
         del self.epoch_memory
         self.epoch_memory = []
@@ -104,21 +102,15 @@ class ActorCriticAgent():
         ], lr=self.lr)
         self.memory = ReplayMemory(100000)
 
-    def perprocess_state(self, state: RobotState):
-        return torch.tensor([state.scan]).double() # 1x2xseq
+    def preprocess(self, state: RobotState):
+        return torch.tensor([state.scan]).double()  # 1x2xseq
 
-    def select_action(self, state_map, mode):
-        device = self.device
-
+    def run_AC(self, tensor_state, mode):
         with torch.no_grad():
             self.target_net.eval()
-            state_map = state_map.to(device)
-            a_m, a_t, v = self.target_net(state_map)
-        a_m = a_m.cpu().numpy()[0] # left, ahead, right
-        a_t = a_t.cpu().numpy()[0] # turn left, stay, right
-        #plt.plot(distance)
-        #plt.show()
-        #plt.pause(0.0001)
+            a_m, a_t, v = self.target_net(tensor_state)
+        a_m = a_m.cpu().numpy()[0]  # left, ahead, right
+        a_t = a_t.cpu().numpy()[0]  # turn left, stay, right
 
         if mode == "max_probability":
             a_m = np.argmax(a_m)
@@ -126,17 +118,48 @@ class ActorCriticAgent():
         elif mode == "sample":
             #a_m += 0.01
             a_m /= a_m.sum()
-            a_m = np.random.choice(range(3),p=a_m)
+            a_m = np.random.choice(range(3), p=a_m)
             #a_t += 0.01
             a_t /= a_t.sum()
-            a_t = np.random.choice(range(3),p=a_t)
+            a_t = np.random.choice(range(3), p=a_t)
+
         return a_m, a_t
+
+    def decode_action(self, a_m, a_t, state):
+        action = Action()
+        if a_m == 0:  # left
+            action.v_n = -1.0
+        elif a_m == 1:  # ahead
+            action.v_t = +1.0
+        elif a_m == 2:  # right
+            action.v_n = +1.0
+
+        if a_t == 0:  # left
+            action.angular = +1.0
+        elif a_t == 1:  # stay
+            action.angular = 0.0
+        elif a_t == 2:  # right
+            action.angular = -1.0
+
+        if state.detect:
+            action.shoot = +1.0
+        else:
+            action.shoot = 0.0
+
+        return action
+
+    def select_action(self, state, mode):
+        tensor_state = self.preprocess(state).to(self.device)
+        a_m, a_t = self.run_AC(tensor_state, mode)
+        action = self.decode_action(a_m, a_t, state)
+
+        return action
 
     def push(self, state, next_state, action, reward):
         self.memory.push(state, action, next_state, reward)
 
     def make_state_map(self, state):
-        return torch.cat(state, dim=0).double() # batchx2xseq
+        return torch.cat(state, dim=0).double()  # batchx2xseq
 
     def sample_memory(self, is_test=False):
         device = self.device
@@ -174,16 +197,16 @@ class ActorCriticAgent():
         self.optimizer2.step()
         ### Actor ###
         #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-        prob_m = a_m.gather(1, action_batch[:,0:1].long())
-        prob_t = a_t.gather(1, action_batch[:,1:2].long())
+        prob_m = a_m.gather(1, action_batch[:, 0:1].long())
+        prob_t = a_t.gather(1, action_batch[:, 1:2].long())
         log_prob = torch.log(prob_m * prob_t + 1e-6)
         exp_v = torch.mean(log_prob * td_error.detach())
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
         self.optimizer.zero_grad()
         loss.backward()
-        #for param in self.model.parameters():
-            #if param.grad is not None:
-                #param.grad.data.clamp_(-1, 1)
+        # for param in self.model.parameters():
+        # if param.grad is not None:
+        #param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
         return loss.item()
@@ -198,7 +221,8 @@ class ActorCriticAgent():
     def test_model(self):
         if len(self.memory) < BATCH_SIZE:
             return
-        state_batch, action_batch, reward_batch, next_state_batch = self.sample_memory(True)
+        state_batch, action_batch, reward_batch, next_state_batch = self.sample_memory(
+            True)
         device = self.device
         state_batch = state_batch.to(device)
         action_batch = action_batch.to(device)
@@ -207,13 +231,14 @@ class ActorCriticAgent():
 
         with torch.no_grad():
             self.target_net.eval()
-            a_m, a_t, value_eval = self.target_net(state_batch)  # batch, 1, 10, 16
+            a_m, a_t, value_eval = self.target_net(
+                state_batch)  # batch, 1, 10, 16
             ### Critic ###
             td_error = reward_batch - value_eval
             ### Actor ###
             #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-            prob_m = a_m.gather(1, action_batch[:,0:1].long())
-            prob_t = a_t.gather(1, action_batch[:,1:2].long())
+            prob_m = a_m.gather(1, action_batch[:, 0:1].long())
+            prob_t = a_t.gather(1, action_batch[:, 1:2].long())
             log_prob = torch.log(prob_m * prob_t + 1e-6)
             exp_v = torch.mean(log_prob * td_error.detach())
             loss = -exp_v
@@ -252,57 +277,10 @@ class ActorCriticAgent():
             #loss = self.test_model()
             #print("Test loss: {}".format(loss))
         return loss
-    
+
     def decay_LR(self, decay):
         self.lr *= decay
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
-        
+
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
-
-    def select_final_action(self, state, mode):
-        device = self.device
-        state_map = self.perprocess_state(state)
-
-        with torch.no_grad():
-            self.target_net.eval()
-            state_map = state_map.to(device)
-            a_m, a_t, v = self.target_net(state_map)
-        a_m = a_m.cpu().numpy()[0] # left, ahead, right
-        a_t = a_t.cpu().numpy()[0] # turn left, stay, right
-        #plt.plot(distance)
-        #plt.show()
-        #plt.pause(0.0001)
-
-        if mode == "max_probability":
-            a_m = np.argmax(a_m)
-            a_t = np.argmax(a_t)
-        elif mode == "sample":
-            #a_m += 0.01
-            a_m /= a_m.sum()
-            a_m = np.random.choice(range(3),p=a_m)
-            #a_t += 0.01
-            a_t /= a_t.sum()
-            a_t = np.random.choice(range(3),p=a_t)
-
-        action = Action()
-        if a_m == 0: # left
-            action.v_n = -1.0
-        elif a_m == 1: # ahead
-            action.v_t = +1.0
-        elif a_m == 2: # right
-            action.v_n = +1.0
-
-        if a_t == 0: # left
-            action.omega = +1.0
-        elif a_t == 1: # stay
-            pass
-        elif a_t == 2: # right
-            action.omega = -1.0
-
-        if state.detect:
-            action.shoot = +1.0
-        else:
-            action.shoot = 0.0
-
-        return action

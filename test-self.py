@@ -12,7 +12,7 @@ from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
-from SupportAlgorithm.DataStructure import Action, RobotState
+from utils import *
 
 move = NaiveMove()
 
@@ -48,7 +48,7 @@ for i_episode in range(num_episodes):
 
         # Select and perform an action
         action = Action()
-        state_map = agent.perprocess_state(state["robot_0"])
+        state_map = agent.preprocess(state["robot_0"])
         a_m, a_t = agent.select_action(state_map, "max_probability")
         if a_m == 0: # left
             action.v_n = -1.0
@@ -71,7 +71,7 @@ for i_episode in range(num_episodes):
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state_map = agent.perprocess_state(next_state["robot_0"])
+        next_state_map = agent.preprocess(next_state["robot_0"])
 
         # Store the transition in memory
         agent.push(state_map, next_state_map, [a_m, a_t], [reward])
