@@ -1,5 +1,5 @@
-from Referee.SupplyArea import SUPPLYAREABOX_BLUE
-from Referee.SupplyArea import SUPPLYAREABOX_RED
+#from Referee.SupplyArea import SUPPLYAREABOX_BLUE
+#from Referee.SupplyArea import SUPPLYAREABOX_RED
 import numpy as np
 import math
 import Box2D
@@ -42,10 +42,10 @@ GUN_POLY = [
 
 BULLETS_ADDED_ONE_TIME = 50
 
-SUPPLY_AREAS = [
-    SUPPLYAREABOX_RED,  # (x, y, w, h)
-    SUPPLYAREABOX_BLUE
-]
+#SUPPLY_AREAS = [
+    #SUPPLYAREABOX_RED,  # (x, y, w, h)
+    #SUPPLYAREABOX_BLUE
+#]
 
 ROBOT_COLOR = [COLOR_RED, COLOR_BLUE]
 
@@ -60,7 +60,7 @@ class Robot:
                     shape=polygonShape(vertices=[
                         (x*SIZE, y*SIZE) for x, y in poly
                     ]),
-                    density=1.0, restitution=1, userData=userData, friction=1
+                    density=1.0, restitution=1, friction=1, userData=userData
                 ),
             ]
         )
@@ -70,10 +70,9 @@ class Robot:
         color = ROBOT_COLOR[robot_id]
         userData = UserData("robot", robot_id)
         self.__world = world
-        self.__hull = self._create_dynamic_body(
-            init_x, init_y, HULL_POLY, userData)
+        self.__hull = self._create_dynamic_body(init_x, init_y, HULL_POLY, userData)
         self.__hull.color = color
-        self.__hull.userData = userData
+        #self.__hull.userData = userData
         self.__wheels = []
         for wx, wy in WHEEL_POS:
             front_k = 1.0
@@ -91,11 +90,10 @@ class Robot:
             )
             w.joint = self.__world.CreateJoint(rjd)
             w.color = WHEEL_COLOR
-            w.userData = userData
+            #w.userData = userData
             self.__wheels.append(w)
 
-        self.__gun = self._create_dynamic_body(
-            init_x, init_y, GUN_POLY, userData)
+        self.__gun = self._create_dynamic_body(init_x, init_y, GUN_POLY, userData)
         self.gun_joint = self.__world.CreateJoint(revoluteJointDef(
             bodyA=self.__hull,
             bodyB=self.__gun,
@@ -105,16 +103,17 @@ class Robot:
             enableLimit=True,
             maxMotorTorque=180*900*SIZE*SIZE,
             motorSpeed=0.0,
-            lowerAngle=-math.pi/4,
-            upperAngle=+math.pi/4,
+            lowerAngle=-math.pi/1,
+            upperAngle=+math.pi/1,
         ))
-        self.__gun.color = (0.1, 0.1, 0.1)
+        self.__gun.color = COLOR_BLACK
+        #self.__gun.userData = userData
 
         self.__hull.angle = init_angle
         self.__gun.angle = init_angle
         self.__drawlist = self.__wheels + [self.__hull, self.__gun]
-        self.group = userData
-        self.robot_id = userData
+        self.group = ["red", "blue"][robot_id]
+        self.robot_id = robot_id
         self.__health = 2000.0
         self.buff_left_time = 0
         self.command = {"ahead": 0, "rotate": 0, "transverse": 0}
@@ -126,22 +125,24 @@ class Robot:
         self.supply_opportunity_left = 2
 
     def supply(self):
-        if(self.supply_opportunity_left <= 0):
-            return
-        self.supply_opportunity_left -= 1
-        if(self.if_in_supplyarea()):
-            self.__n_projectile += BULLETS_ADDED_ONE_TIME
+        self.__n_projectile += BULLETS_ADDED_ONE_TIME
 
-    def if_in_supplyarea(self):
-        if(self.group not in SUPPLY_AREAS.keys()):
-            return False
-        supply_area = SUPPLY_AREAS[self.group]
-        x_robot, y_robot = self.__hull.position.x, self.__hull.position.y
-        bx, by, w, h = supply_area
-        if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
-            return True
-        else:
-            return False
+    def if_supply_available(self):
+        return self.supply_opportunity_left > 0
+
+    def use_supply_oppotunity(self):
+        self.supply_opportunity_left -= 1
+
+    #def if_in_supplyarea(self):
+        #if(self.group not in SUPPLY_AREAS.keys()):
+            #return False
+        #supply_area = SUPPLY_AREAS[self.group]
+        #x_robot, y_robot = self.__hull.position.x, self.__hull.position.y
+        #bx, by, w, h = supply_area
+        #if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
+            #return True
+        #else:
+            #return False
 
     def get_pos(self):
         return self.__hull.position
@@ -190,7 +191,6 @@ class Robot:
 
     def move_left_right(self, transverse):
         self.command["transverse"] = transverse
-
 
     def turn_left_right(self, r):
         self.command["rotate"] = r

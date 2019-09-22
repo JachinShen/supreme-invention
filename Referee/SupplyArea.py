@@ -1,8 +1,7 @@
+from Objects.Robot import Robot
+from utils import *
 SUPPLYAREABOX_RED = (3.5, 4.0, 1.0, 1.0) #(x, y, w, h)
 SUPPLYAREABOX_BLUE = (3.5, 0, 1.0, 1.0)
-
-COLOR_RED = (0.9, 0.4, 0.4, 1.0)
-COLOR_BLUE = (0.4, 0.4, 9.0, 1.0)
 
 class SupplyAreas(object):
     def __init__(self):
@@ -10,8 +9,8 @@ class SupplyAreas(object):
         self.supply_area_blue = SUPPLYAREABOX_BLUE
 
     def render(self, gl):
-        self._render(gl, self.supply_area_red, COLOR_RED)
-        self._render(gl, self.supply_area_blue, COLOR_BLUE)
+        self._render(gl, self.supply_area_red, COLOR_LIGHT_RED)
+        self._render(gl, self.supply_area_blue, COLOR_LIGHT_BLUE)
 
     def _render(self, gl, box, color):
         gl.glBegin(gl.GL_QUADS)
@@ -23,17 +22,16 @@ class SupplyAreas(object):
         gl.glVertex3f(x, y + h, 0)
         gl.glEnd()
 
-    # def isInSupplyArea(self, object):
-    #     if(object.group not in {'red', 'blue'}):
-    #         return False
-    #     if(object.group == 'red'):
-    #         supply_area = self.supply_area_red
-    #     elif(object.group == 'blue'):
-    #         supply_area = self.supply_area_blue
-    #
-    #     x_robot, y_robot = object.hull.position.x, object.hull.position.y
-    #     bx, by, w, h = supply_area
-    #     if (x_robot >= bx and x_robot <= bx + w and y_robot >= by and y_robot <= by + h):
-    #         return True
-    #     else:
-    #         return False
+    def if_in_area(self, robot: Robot):
+        if robot.group == "red":
+            supply_area = self.supply_area_red
+        elif robot.group == "blue":
+            supply_area = self.supply_area_blue
+        else:
+            print("Wrong Input Object in supply area!")
+            return False
+
+        pos = robot.get_pos()
+        x, y = pos.x, pos.y
+        bx, by, w, h = supply_area
+        return (bx <= x <= bx + w) and (by <= y <= by + h)

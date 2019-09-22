@@ -134,42 +134,45 @@ class ICRAField(gym.Env, EzPickle):
         contact_robot_wall = self.__contactListener_keepref.collision_robot_wall
         contact_robot_robot = self.__contactListener_keepref.collision_robot_robot
         for bullet, robot in contact_bullet_robot:
-            self.__projectile.destroyById(bullet)
+            self.__projectile.destroyById(bullet.id)
             if(self.__robots[robot.id].buff_left_time) > 0:
                 self.__robots[robot.id].lose_health(25)
             else:
                 self.__robots[robot.id].lose_health(50)
         for bullet in contact_bullet_wall:
-            self.__projectile.destroyById(bullet)
+            self.__projectile.destroyById(bullet.id)
         for robot in contact_robot_wall:
-            pass
-            # self.robots[robot].loseHealth(2000)
+            self.__robots[robot.id].lose_health(100)
         for robot in contact_robot_robot:
-            self.__robots[robot].lose_health(10)
+            self.__robots[robot.id].lose_health(10)
         self.__contactListener_keepref.clean()
 
-    def __step_action(self, robot_name, action: Action):
+    def __step_action(self, robot: Robot, action: Action):
+        #robot = self.__robots[robot_name]
         # gas, rotate, transverse, rotate cloud terrance, shoot
-        self.__robots[robot_name].move_ahead_back(action.v_t)
-        self.__robots[robot_name].turn_left_right(action.omega)
-        self.__robots[robot_name].move_left_right(action.v_n)
+        robot.move_ahead_back(action.v_t)
+        robot.turn_left_right(action.omega)
+        robot.move_left_right(action.v_n)
         if int(self.t * FPS) % (60 * FPS) == 0:
-            self.__robots[robot_name].refresh_supply_oppotunity()
-        # if action[5] > 0.99:
-            # self.robots[robot_name].addBullets()
-            #action[5] = +0.0
+            robot.refresh_supply_oppotunity()
+        if action.supply > 0.99:
+            action.supply = 0.0
+            if robot.if_supply_available():
+                robot.use_supply_oppotunity()
+                if self.__area_supply.if_in_area(robot):
+                    robot.supply()
         if action.shoot > 0.99 and int(self.t*FPS) % (FPS/5) == 1:
-            if(self.__robots[robot_name].if_left_projectile()):
-                angle, pos = self.__robots[robot_name].get_gun_angle_pos()
-                self.__robots[robot_name].shoot()
+            if(robot.if_left_projectile()):
+                angle, pos = robot.get_gun_angle_pos()
+                robot.shoot()
                 self.__projectile.shoot(angle, pos)
 
-    def _autoaim(self, robot_name):
+    def _autoaim(self, robot, state):
         #detected = {}
         scan_distance, scan_type = [], []
-        self.state[robot_name].detect = False
+        state.detect = False
         for i in range(-135, 135, 2):
-            angle, pos = self.__robots[robot_name].get_angle_pos()
+            angle, pos = robot.get_angle_pos()
             angle += i/180*math.pi
             p1 = (pos[0] + 0.3*math.cos(angle), pos[1] + 0.3*math.sin(angle))
             p2 = (pos[0] + SCAN_RANGE*math.cos(angle),
@@ -177,38 +180,37 @@ class ICRAField(gym.Env, EzPickle):
             self.__world.RayCast(self.__callback_autoaim, p1, p2)
             scan_distance.append(self.__callback_autoaim.fraction)
             u = self.__callback_autoaim.userData
-            if u in self.__robot_name:
+            if u is not None and u.type == "robot":
                 scan_type.append(1)
-                #detected[u] = self.__callback_autoaim.point
-                self.__robots[robot_name].set_gimbal(angle)
-                self.state[robot_name].detect = True
+                if not state.detect:
+                    robot.set_gimbal(angle)
+                    state.detect = True
             else:
                 scan_type.append(0)
-        self.state[robot_name].scan = [scan_distance, scan_type]
+        state.scan = [scan_distance, scan_type]
 
-    def _update_robot_state(self, robot_name):
-        self.state[robot_name].pos = self.__robots[robot_name].get_pos()
-        self.state[robot_name].health = self.__robots[robot_name].get_health()
-        self.state[robot_name].angle = self.__robots[robot_name].get_angle()
-        self.state[robot_name].velocity = self.__robots[robot_name].get_velocity()
-        self.state[robot_name].angular = self.__robots[robot_name].get_angular()
+    def _update_robot_state(self, robot, state):
+        state.pos = robot.get_pos()
+        state.health = robot.get_health()
+        state.angle = robot.get_angle()
+        state.velocity = robot.get_velocity()
+        state.angular = robot.get_angular()
 
-    def set_robot_action(self, robot_name, action):
-        self.actions[robot_name] = action
+    def set_robot_action(self, robot_id, action):
+        self.actions[robot_id] = action
 
     def step(self, action):
         ###### observe ######
-        for robot_name in self.__robot_name:
-            self._autoaim(robot_name)
-            self._update_robot_state(robot_name)
+        for robot, state in zip(self.__robots, self.state):
+            self._autoaim(robot, state)
+            self._update_robot_state(robot, state)
 
         ###### action ######
         self.set_robot_action(ID_R1, action)
-        for robot_name in self.__robot_name:
-            action = self.actions[robot_name]
+        for robot, action in zip(self.__robots, self.actions):
             if action is not None:
-                self.__step_action(robot_name, action)
-            self.__robots[robot_name].step(1.0/FPS)
+                self.__step_action(robot, action)
+            robot.step(1.0/FPS)
         self.__world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
@@ -293,11 +295,11 @@ class ICRAField(gym.Env, EzPickle):
         t = self.transform
         gl.glViewport(0, 0, WINDOW_W, WINDOW_H)
         t.enable()
-        self.render_background()
+        self._render_background()
         for geom in self.viewer.onetime_geoms:
             geom.render()
         t.disable()
-        self.render_indicators(WINDOW_W, WINDOW_H)
+        self._render_indicators(WINDOW_W, WINDOW_H)
         win.flip()
 
         self.viewer.onetime_geoms = []
@@ -308,7 +310,7 @@ class ICRAField(gym.Env, EzPickle):
             self.viewer.close()
             self.viewer = None
 
-    def render_background(self):
+    def _render_background(self):
         gl.glBegin(gl.GL_QUADS)
         gl.glColor4f(0.4, 0.8, 0.4, 1.0)
         gl.glVertex3f(-PLAYFIELD, +PLAYFIELD, 0)
@@ -327,13 +329,13 @@ class ICRAField(gym.Env, EzPickle):
         self.__area_buff.render(gl)
         self.__area_supply.render(gl)
 
-    def render_indicators(self, W, H):
+    def _render_indicators(self, W, H):
         self.time_label.text = "Time: {} s".format(int(self.t))
         self.score_label.text = "Score: %04i" % self.reward
         self.health_label.text = "health left Car0 : {} Car1: {} ".format(
             self.__robots[ID_R1].get_health(), self.__robots[ID_B1].get_health())
         self.projectile_label.text = "Car0 bullets : {}, oppotunity to add : {}  ".format(
-            self.__robots[ID_R1].get_left_projectile(), self.__robots[ID_B1].supply_opportunity_left
+            self.__robots[ID_R1].get_left_projectile(), self.__robots[ID_R1].supply_opportunity_left
         )
         self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.__area_buff.buffAreas[0].maxStayTime),
                                                                               int(self.__area_buff.buffAreas[1].maxStayTime))
@@ -381,6 +383,9 @@ if __name__ == "__main__":
             a.v_n = -1.0
         if k == key.SPACE:
             a.shoot = +1.0
+        if k == key.R:
+            a.supply = +1.0
+
 
     def key_release(k, mod):
         if k == key.W:

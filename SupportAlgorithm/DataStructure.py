@@ -15,3 +15,4 @@ class Action():
         self.v_n = 0.0
         self.omega = 0.0
         self.shoot = 0.0
+        self.supply = 0.0

@@ -6,6 +6,7 @@ from utils import *
 
 SIZE = 0.001
 BULLET_BOX = (40*SIZE, 10*SIZE)
+RADIUS_START = 0.9
 
 
 class Bullet:
@@ -21,22 +22,23 @@ class Bullet:
         )]
 
     def shoot(self, init_angle, init_pos):
-        MIN_RANGE = 0.9
         angle = init_angle
         x, y = init_pos
-        x += math.cos(angle) * MIN_RANGE
-        y += math.sin(angle) * MIN_RANGE
+        x += math.cos(angle) * RADIUS_START
+        y += math.sin(angle) * RADIUS_START
+        userData = UserData("bullet", self.__ctr)
+        self.__fixture_bullet[0].userData = userData
         bullet = self.__world.CreateDynamicBody(
             position=(x, y),
             angle=angle,
-            fixtures=self.__fixture_bullet
+            fixtures=self.__fixture_bullet,
         )
-        bullet.bullet = True
-        bullet.color = (0.0, 0.0, 0.0)
-        bullet.userData = UserData("bullet", self.__ctr)
-        self.__ctr += 1
+        #bullet.bullet = True
+        bullet.color = COLOR_BLACK
+        #bullet.userData = userData
         bullet.linearVelocity = (math.cos(angle)*5, math.sin(angle)*5)
-        self.__bullets[bullet.userData] = bullet
+        self.__bullets[self.__ctr] = bullet
+        self.__ctr += 1
 
     def draw(self, viewer):
         for obj in self.__bullets.values():

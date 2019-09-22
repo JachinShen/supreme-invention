@@ -19,5 +19,4 @@ class detectCallback(b2RayCastCallback):
         self.userData = fixture.userData
         self.point = fixture.body.position
         self.fraction = fraction
-        # print(self.userData)
         return fraction
