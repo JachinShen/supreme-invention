@@ -12,7 +12,7 @@ from pyglet import gl
 
 from Objects.Bullet import Bullet
 from Objects.Robot import Robot
-from Referee.BuffArea import AllBuffArea
+from Referee.BuffArea import BuffArea
 from Referee.ICRAContactListener import ICRAContactListener
 from Referee.ICRAMap import ICRAMap
 from Referee.SupplyArea import SupplyAreas
@@ -117,7 +117,7 @@ class ICRAField(gym.Env, EzPickle):
 
         self.__obstacle = ICRAMap(self.__world)
         self.__projectile = Bullet(self.__world)
-        self.__area_buff = AllBuffArea()
+        self.__area_buff = BuffArea()
         self.__area_supply = SupplyAreas()
 
         self.state = [RobotState(init_pos_0), RobotState(init_pos_1)]
@@ -150,7 +150,7 @@ class ICRAField(gym.Env, EzPickle):
     def _step_action(self, robot: Robot, action: Action):
         # gas, rotate, transverse, rotate cloud terrance, shoot
         robot.move_ahead_back(action.v_t)
-        robot.turn_left_right(action.omega)
+        robot.turn_left_right(action.angular)
         robot.move_left_right(action.v_n)
         if int(self.t * FPS) % (60 * FPS) == 0:
             robot.refresh_supply_oppotunity()
@@ -215,8 +215,8 @@ class ICRAField(gym.Env, EzPickle):
 
         ###### Referee ######
         self.__step_contact()
-        self.__area_buff.detect(
-            [self.__robots[ID_R1], self.__robots[ID_B1]], self.t)
+        for robot in self.__robots:
+            self.__area_buff.detect(robot, self.t)
 
         ###### reward ######
         step_reward = 0
@@ -337,10 +337,12 @@ class ICRAField(gym.Env, EzPickle):
             self.__robots[ID_R1].get_left_projectile(
             ), self.__robots[ID_R1].supply_opportunity_left
         )
-        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(int(self.__area_buff.buffAreas[0].maxStayTime),
-                                                                              int(self.__area_buff.buffAreas[1].maxStayTime))
-        self.buff_left_time_label.text = 'Buff Left Time: Red {}s, Blue {}s'.format(int(self.__robots[ID_R1].buff_left_time),
-                                                                                    int(self.__robots[ID_R1].buff_left_time))
+        self.buff_stay_time.text = 'Buff Stay Time: Red {}s, Blue {}s'.format(
+            int(self.__area_buff.get_single_buff(GROUP_RED).get_stay_time()),
+            int(self.__area_buff.get_single_buff(GROUP_BLUE).get_stay_time()))
+        self.buff_left_time_label.text = 'Buff Left Time: Red {}s, Blue {}s'.format(
+            int(self.__robots[ID_R1].buff_left_time),
+            int(self.__robots[ID_B1].buff_left_time))
         self.time_label.draw()
         self.score_label.draw()
         self.health_label.draw()
