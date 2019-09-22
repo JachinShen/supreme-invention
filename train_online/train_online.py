@@ -18,7 +18,7 @@ from Agent.ActorCriticAgent import ActorCriticAgent
 from Agent.HandAgent import HandAgent
 from ICRAField import ICRAField
 from SupportAlgorithm.NaiveMove import NaiveMove
-from SupportAlgorithm.DataStructure import Action, RobotState
+from utils import *
 
 move = NaiveMove()
 
@@ -31,6 +31,7 @@ np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
+env.seed(seed)
 agent = ActorCriticAgent()
 #agent.load_model()
 agent2 = HandAgent()
@@ -48,39 +49,22 @@ for i_episode in range(1, num_episodes):
     state, reward, done, info = env.step(action)
     for t in (range(2*60*30)):
         # Other agent
-        env.set_robot_action("robot_1", agent2.select_action(state["robot_1"]))
+        env.set_robot_action(ID_B1, agent2.select_action(state[ID_B1]))
 
         # Select and perform an action
         action = Action()
-        state_map = agent.preprocess(state["robot_0"])
-        a_m, a_t = agent.select_action(state_map, "max_probability")
-        if a_m == 0: # left
-            action.v_n = -1.0
-        elif a_m == 1: # ahead
-            action.v_t = +1.0
-        elif a_m == 2: # right
-            action.v_n = +1.0
-
-        if a_t == 0: # left
-            action.omega = +1.0
-        elif a_t == 1: # stay
-            pass
-        elif a_t == 2: # right
-            action.omega = -1.0
-
-        if state["robot_0"].detect:
-            action.shoot = +1.0
-        else:
-            action.shoot = 0.0
+        state_map = agent.preprocess(state[ID_R1])
+        a_m, a_t = agent.run_AC(state_map)
+        action = agent.decode_action(a_m, a_t, state[ID_R1], "max_probability")
 
         # Step
         next_state, reward, done, info = env.step(action)
-        next_state_map = agent.preprocess(next_state["robot_0"])
+        tensor_next_state = agent.preprocess(next_state[ID_R1])
 
         # Store the transition in memory
-        agent.push(state_map, next_state_map, [a_m, a_t], [reward])
+        agent.push(state_map, tensor_next_state, [a_m, a_t], [reward])
         state = next_state
-        state_map = next_state_map
+        state_map = tensor_next_state
 
         #env.render()
         # Perform one step of the optimization (on the target network)

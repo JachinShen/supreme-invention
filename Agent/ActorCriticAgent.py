@@ -105,13 +105,16 @@ class ActorCriticAgent():
     def preprocess(self, state: RobotState):
         return torch.tensor([state.scan]).double()  # 1x2xseq
 
-    def run_AC(self, tensor_state, mode):
+    def run_AC(self, tensor_state):
         with torch.no_grad():
             self.target_net.eval()
             a_m, a_t, v = self.target_net(tensor_state)
         a_m = a_m.cpu().numpy()[0]  # left, ahead, right
         a_t = a_t.cpu().numpy()[0]  # turn left, stay, right
 
+        return a_m, a_t
+
+    def decode_action(self, a_m, a_t, state, mode):
         if mode == "max_probability":
             a_m = np.argmax(a_m)
             a_t = np.argmax(a_t)
@@ -123,9 +126,6 @@ class ActorCriticAgent():
             a_t /= a_t.sum()
             a_t = np.random.choice(range(3), p=a_t)
 
-        return a_m, a_t
-
-    def decode_action(self, a_m, a_t, state):
         action = Action()
         if a_m == 0:  # left
             action.v_n = -1.0
@@ -150,8 +150,8 @@ class ActorCriticAgent():
 
     def select_action(self, state, mode):
         tensor_state = self.preprocess(state).to(self.device)
-        a_m, a_t = self.run_AC(tensor_state, mode)
-        action = self.decode_action(a_m, a_t, state)
+        a_m, a_t = self.run_AC(tensor_state)
+        action = self.decode_action(a_m, a_t, state, mode)
 
         return action
 
@@ -197,8 +197,8 @@ class ActorCriticAgent():
         self.optimizer2.step()
         ### Actor ###
         #prob = x.gather(1, (action_batch[:,0:1]*32).long()) * y.gather(1, (action_batch[:,1:2]*20).long())
-        prob_m = a_m.gather(1, action_batch[:, 0:1].long())
-        prob_t = a_t.gather(1, action_batch[:, 1:2].long())
+        prob_m = a_m.gather(1, action_batch[:, 0].long())
+        prob_t = a_t.gather(1, action_batch[:, 1].long())
         log_prob = torch.log(prob_m * prob_t + 1e-6)
         exp_v = torch.mean(log_prob * td_error.detach())
         loss = -exp_v + F.smooth_l1_loss(value_eval, reward_batch)
@@ -268,7 +268,7 @@ class ActorCriticAgent():
             return state_batch, action_batch, reward_batch, next_state_batch
 
         dataloader = DataLoader(self.memory.main_memory, batch_size=BATCH_SIZE,
-                                shuffle=True, collate_fn=batch_state_map, num_workers=10, pin_memory=True)
+                                shuffle=True, collate_fn=batch_state_map, num_workers=0, pin_memory=True)
         device = self.device
         for epoch in range(num_epoch):
             #print("Train epoch: [{}/{}]".format(epoch, num_epoch))
