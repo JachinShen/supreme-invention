@@ -25,7 +25,7 @@ np.random.seed(seed)
 random.seed(seed)
 
 env = ICRAField()
-env.seed(123)
+env.seed(seed)
 agent = ActorCriticAgent()
 agent2 = HandAgent()
 agent.load_model()
@@ -45,7 +45,6 @@ for i_episode in range(num_episodes):
         env.set_robot_action(ID_B1, agent2.select_action(state[ID_B1]))
 
         # Select and perform an action
-        action = Action()
         action = agent.select_action(state[ID_R1], "max_probability")
 
         # Step
