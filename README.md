@@ -37,7 +37,7 @@ You can use WASD to move the red robot, QE to rotate it, SPACE to shoot projecti
 ## Train
 
 ```
-python train.py --seed 233 --enemy hand --save_model_path "ICRA_save.model" --epoch 1000 --update_step 10
+python3 train.py --seed 233 --enemy hand --save_model_path "ICRA_save.model" --epoch 1000 --update_step 10
 ```
 
 Use the hand-written agent as the enemy. Save the trained model to ICRA_save.model. Train 1000 epoches and update the model every 10 epoch.
@@ -45,7 +45,7 @@ Use the hand-written agent as the enemy. Save the trained model to ICRA_save.mod
 ## Test
 
 ```
-python test.py --seed 233 --enemy hand --load_model --load_model_path "ICRA_save.model" --epoch 50
+python3 test.py --seed 233 --enemy hand --load_model --load_model_path "ICRA_save.model" --epoch 50
 ```
 
 Use the hand-written agent as the enemy. Use the trained model in ICRA.model. Test 50 epoches.
