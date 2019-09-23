@@ -54,7 +54,8 @@ Use the hand-written agent as the enemy. Use the trained model in ICRA.model. Te
 ![](imgs/screenshot.png)
 
 ## Video on real robot
-<iframe width="560" height="315" src="https://www.youtube.com/embed/pTiAzl6hWXM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+https://youtu.be/pTiAzl6hWXM
 
 ## TODO
 
