@@ -19,7 +19,7 @@ OBSTACLE_POS = [(1.525, 1.9), (3.375, 0.5), (6.475, 3.1),
 OBSTACLE_BOX = [(0.125, 0.5), (0.125, 0.5), (0.125, 0.5), (0.125, 0.5),
                 (0.5, 0.125), (0.5, 0.125), (0.5, 0.125)]  # Half of the width and height
 
-class ICRAMap:
+class ICRALayout:
     def __init__(self, world=None):
         if(world):
             userData = UserData("wall", None)
@@ -94,7 +94,7 @@ class ICRAMap:
 
 
 if __name__ == '__main__':
-    m = ICRAMap()
+    m = ICRALayout()
     #plt.ylim(0, 49)
     #plt.xlim(0, 79)
     #plt.imshow(m.image)

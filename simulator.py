@@ -12,13 +12,13 @@ from gym import spaces
 from gym.utils import EzPickle, colorize, seeding
 from pyglet import gl
 
-from battlefield.body.obstacle import ICRAMap
+from battlefield.body.obstacle import ICRALayout
 from battlefield.body.robot import Robot
-from battlefield.body.projectile import Bullet
-from battlefield.referee.contact import ICRAContactListener
-from battlefield.referee.buff import BuffArea
-from battlefield.referee.supply import SupplyAreas
-from battlefield.sensor.capture import detectCallback
+from battlefield.body.projectile import Projectile
+from battlefield.referee.contact import ContactListener
+from battlefield.referee.buff import AreaBuff
+from battlefield.referee.supply import AreaSupply
+from battlefield.sensor.capture import callback_capture
 from utils import *
 
 WINDOW_W = 1200
@@ -32,14 +32,7 @@ ZOOM = 2.7        # Camera zoom
 SCAN_RANGE = 5  # m
 
 
-def robotName2ID(robot_name):
-    if robot_name == "robot_0":
-        return ID_R1
-    elif robot_name == "robot_1":
-        return ID_B1
-
-
-class ICRAField(gym.Env, EzPickle):
+class ICRABattleField(gym.Env, EzPickle):
 
     __pos_safe = [
         [0.5, 0.5], [0.5, 2.0], [0.5, 3.0], [0.5, 4.5],  # 0 1 2 3
@@ -64,7 +57,7 @@ class ICRAField(gym.Env, EzPickle):
     def __init__(self):
         EzPickle.__init__(self)
         self.seed()
-        self.__contactListener_keepref = ICRAContactListener(self)
+        self.__contactListener_keepref = ContactListener(self)
         self.__world = Box2D.b2World(
             (0, 0), contactListener=self.__contactListener_keepref)
         self.viewer = None
@@ -74,7 +67,7 @@ class ICRAField(gym.Env, EzPickle):
         self.__area_buff = None
         self.__projectile = None
         self.__area_supply = None
-        self.__callback_autoaim = detectCallback()
+        self.__callback_autoaim = callback_capture()
 
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -115,10 +108,10 @@ class ICRAField(gym.Env, EzPickle):
         self.__B1 = Robot(self.__world, 0, init_pos_1, ID_B1)
         self.__robots = [self.__R1, self.__B1]
 
-        self.__obstacle = ICRAMap(self.__world)
-        self.__projectile = Bullet(self.__world)
-        self.__area_buff = BuffArea()
-        self.__area_supply = SupplyAreas()
+        self.__obstacle = ICRALayout(self.__world)
+        self.__projectile = Projectile(self.__world)
+        self.__area_buff = AreaBuff()
+        self.__area_supply = AreaSupply()
 
         self.state = [RobotState(init_pos_0), RobotState(init_pos_1)]
         self.actions = [Action(), Action()]
@@ -406,7 +399,7 @@ if __name__ == "__main__":
         if k == key.SPACE:
             a.shoot = +0.0
 
-    env = ICRAField()
+    env = ICRABattleField()
     env.render()
     record_video = False
     if record_video:

@@ -4,7 +4,7 @@ import numpy as np
 import math
 import Box2D
 from Box2D.b2 import (fixtureDef, polygonShape, revoluteJointDef, )
-from utils import *
+from utils import UserData, COLOR_RED, COLOR_BLUE, COLOR_BLACK
 
 # ICRA 2019 Robot Simulation
 #

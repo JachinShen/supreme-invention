@@ -7,7 +7,7 @@ TIME_BUFF_INIT = 30
 # Time that a robot needs to stay in a buff area to activate defentive buff
 TIME_BUFF_TRIGGER = 5
 
-class BuffArea(object):
+class AreaBuff(object):
     def __init__(self):
         self.__buff_area = [
             SingleBuffArea(BOX_BUFF_RED, GROUP_RED, COLOR_LIGHT_RED),

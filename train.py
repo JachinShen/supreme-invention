@@ -11,8 +11,8 @@ import torch
 
 from agent.AC import ActorCriticAgent
 from agent.hand import HandAgent
-from simulator import ICRAField
-from utils import *
+from simulator import ICRABattleField
+from utils import Action, ID_R1, ID_B1
 
 parser = argparse.ArgumentParser(
     description="Train the model in the ICRA 2019 Battlefield")
@@ -46,8 +46,7 @@ elif args.enemy == "AC":
     agent2 = ActorCriticAgent()
     agent2.load_model(args.load_model_path)
 
-move = NaiveMove()
-env = ICRAField()
+env = ICRABattleField()
 env.seed(args.seed)
 losses = []
 rewards = []

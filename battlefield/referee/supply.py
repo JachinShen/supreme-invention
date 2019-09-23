@@ -3,7 +3,7 @@ from utils import *
 SUPPLYAREABOX_RED = (3.5, 4.0, 1.0, 1.0) #(x, y, w, h)
 SUPPLYAREABOX_BLUE = (3.5, 0, 1.0, 1.0)
 
-class SupplyAreas(object):
+class AreaSupply(object):
     def __init__(self):
         self.supply_area_red = SUPPLYAREABOX_RED
         self.supply_area_blue = SUPPLYAREABOX_BLUE

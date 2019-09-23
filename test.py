@@ -3,16 +3,14 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 '''
 import random
 import argparse
-from collections import namedtuple
-from itertools import count
 
 import numpy as np
 import torch
 
 from agent.AC import ActorCriticAgent
 from agent.hand import HandAgent
-from simulator import ICRAField
-from utils import *
+from simulator import ICRABattleField
+from utils import Action, ID_R1, ID_B1
 
 parser = argparse.ArgumentParser(
     description="Test the trained model in the ICRA 2019 Battlefield")
@@ -44,7 +42,7 @@ else:
     print("Unknown agent!!!")
     exit()
 
-env = ICRAField()
+env = ICRABattleField()
 env.seed(args.seed)
 
 for i_episode in range(args.epoch):

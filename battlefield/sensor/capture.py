@@ -1,7 +1,7 @@
 from Box2D import b2RayCastCallback
 
 
-class detectCallback(b2RayCastCallback):
+class callback_capture(b2RayCastCallback):
     """
     This class captures the closest hit shape.
     """
