@@ -1,4 +1,4 @@
-from Objects.Robot import Robot
+from battlefield.body.robot import Robot
 from utils import *
 SUPPLYAREABOX_RED = (3.5, 4.0, 1.0, 1.0) #(x, y, w, h)
 SUPPLYAREABOX_BLUE = (3.5, 0, 1.0, 1.0)

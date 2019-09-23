@@ -12,14 +12,13 @@ from gym import spaces
 from gym.utils import EzPickle, colorize, seeding
 from pyglet import gl
 
-from Objects.Bullet import Bullet
-from Objects.Robot import Robot
-from Referee.BuffArea import BuffArea
-from Referee.ICRAContactListener import ICRAContactListener
-from Referee.ICRAMap import ICRAMap
-from Referee.SupplyArea import SupplyAreas
-from SupportAlgorithm.DetectCallback import detectCallback
-#from SupportAlgorithm.DataStructure import Action, RobotState
+from battlefield.body.obstacle import ICRAMap
+from battlefield.body.robot import Robot
+from battlefield.body.projectile import Bullet
+from battlefield.referee.contact import ICRAContactListener
+from battlefield.referee.buff import BuffArea
+from battlefield.referee.supply import SupplyAreas
+from battlefield.sensor.capture import detectCallback
 from utils import *
 
 WINDOW_W = 1200
@@ -31,6 +30,7 @@ FPS = 30
 ZOOM = 2.7        # Camera zoom
 
 SCAN_RANGE = 5  # m
+
 
 def robotName2ID(robot_name):
     if robot_name == "robot_0":
@@ -143,7 +143,7 @@ class ICRAField(gym.Env, EzPickle):
             self.__projectile.destroyById(bullet.id)
         for robot in contact_robot_wall:
             pass
-            #self.__robots[robot.id].lose_health(100)
+            # self.__robots[robot.id].lose_health(100)
         for robot in contact_robot_robot:
             self.__robots[robot.id].lose_health(10)
         self.__contactListener_keepref.clean()

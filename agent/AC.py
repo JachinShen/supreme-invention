@@ -11,7 +11,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from Agent.Actor import ActorCritic
+from agent.model import ActorCritic
 from utils import Action, RobotState
 
 BATCH_SIZE = 2048
@@ -108,7 +108,7 @@ class ActorCriticAgent():
     def run_AC(self, tensor_state):
         with torch.no_grad():
             self.target_net.eval()
-            a_m, a_t, v = self.target_net(tensor_state)
+            a_m, a_t, v = self.target_net(tensor_state.to(self.device))
         a_m = a_m.cpu().numpy()[0]  # left, ahead, right
         a_t = a_t.cpu().numpy()[0]  # turn left, stay, right
 

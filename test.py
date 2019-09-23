@@ -9,10 +9,9 @@ from itertools import count
 import numpy as np
 import torch
 
-from Agent.ActorCriticAgent import ActorCriticAgent
-from Agent.HandAgent import HandAgent
-from ICRAField import ICRAField
-from SupportAlgorithm.NaiveMove import NaiveMove
+from agent.AC import ActorCriticAgent
+from agent.hand import HandAgent
+from simulator import ICRAField
 from utils import *
 
 parser = argparse.ArgumentParser(
@@ -27,7 +26,6 @@ parser.add_argument("--epoch", type=int, default=50,
 args = parser.parse_args()
 
 
-move = NaiveMove()
 torch.random.manual_seed(args.seed)
 torch.cuda.random.manual_seed(args.seed)
 np.random.seed(args.seed)

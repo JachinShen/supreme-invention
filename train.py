@@ -9,10 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from Agent.ActorCriticAgent import ActorCriticAgent
-from Agent.HandAgent import HandAgent
-from ICRAField import ICRAField
-from SupportAlgorithm.NaiveMove import NaiveMove
+from agent.AC import ActorCriticAgent
+from agent.hand import HandAgent
+from simulator import ICRAField
 from utils import *
 
 parser = argparse.ArgumentParser(
@@ -53,7 +52,7 @@ env.seed(args.seed)
 losses = []
 rewards = []
 for i_episode in range(1, args.epoch + 1):
-    print("Epoch: [{}/{}]".format(i_episode, args.epoch + 1))
+    print("Epoch: [{}/{}]".format(i_episode, args.epoch))
     # Initialize the environment and state
     action = Action()
     pos = env.reset()
@@ -102,14 +101,12 @@ for i_episode in range(1, args.epoch + 1):
 print('Complete')
 env.close()
 
-plt.figure(figsize=(16, 8))
 plt.title("Loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.plot(losses)
 plt.savefig("loss.pdf")
 
-plt.figure(figsize=(16, 8))
 plt.title("Reward")
 plt.xlabel("Epoch")
 plt.ylabel("Final reward")

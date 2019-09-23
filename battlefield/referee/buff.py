@@ -1,4 +1,4 @@
-from Objects.Robot import Robot
+from battlefield.body.robot import Robot
 from utils import *
 BOX_BUFF_RED = (5.8, 1.25, 1.0, 1.0)  # (x, y, w, h)
 BOX_BUFF_BLUE = (1.2, 2.75, 1.0, 1.0)
